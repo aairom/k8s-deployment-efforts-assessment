@@ -1,0 +1,28 @@
+# =============================================================================
+# NAMESPACE — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f namespace.yaml
+#
+# ADAPTATION NOTES:
+#   This manifest is deliberately cloud-agnostic. No cloud-provider-specific
+#   annotations are used. Add annotations appropriate to your environment:
+#     - Rancher project labels if managed by Rancher
+#     - Tanzu namespace labels if managed by Tanzu Mission Control
+#     - ArgoCD project labels if using GitOps with ArgoCD
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/managed-by: kubectl
+    environment: production
+    platform: self-provisioned
+    # Pod Security Admission — enforce the 'restricted' policy at namespace level
+    # This replaces PodSecurityPolicies (removed in Kubernetes 1.25).
+    # Modes: enforce | audit | warn
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

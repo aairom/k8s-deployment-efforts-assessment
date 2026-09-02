@@ -1,0 +1,278 @@
+# =============================================================================
+# Deployment — myapp
+# =============================================================================
+# Manages the desired state of MyApp pods on the EKS cluster.
+#
+# Key EKS-specific design choices:
+#   - topologySpreadConstraints spread pods across AWS Availability Zones
+#   - podAntiAffinity prevents co-scheduling replicas on the same node
+#   - securityContext enforces non-root, read-only filesystem (EKS best practice)
+#   - IRSA ServiceAccount token explicitly mounted via projected volume
+#   - Resources requests/limits sized for a typical small web service
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/version: "1.0.0"
+    version: v1
+  annotations:
+    # Deployment description — visible in kubectl describe
+    deployment.kubernetes.io/description: "MyApp backend service — EKS production deployment"
+spec:
+  # Minimum 2 replicas to ensure availability during rolling updates
+  replicas: 2
+
+  # Label selector must match template labels — immutable after creation
+  selector:
+    matchLabels:
+      app: myapp
+      version: v1
+
+  # Rolling update strategy — gradually replaces old pods with new ones
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Allow 1 extra pod above the desired count during the update
+      maxSurge: 1
+      # Never go below the desired replica count during the update
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: myapp
+        app.kubernetes.io/name: myapp
+        app.kubernetes.io/component: backend
+        version: v1
+      annotations:
+        # Prometheus scraping annotations — used by kube-prometheus-stack
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+
+    spec:
+      # Use the dedicated ServiceAccount with IRSA annotation
+      serviceAccountName: myapp-sa
+
+      # Explicitly mount the ServiceAccount token (IRSA requirement)
+      automountServiceAccountToken: true
+
+      # ── Pod-level security context ────────────────────────────────────────
+      securityContext:
+        # Run all containers as a non-root user
+        runAsNonRoot: true
+        # Specific UID for the application process
+        runAsUser: 1000
+        runAsGroup: 1000
+        # Filesystem group — allows the process to read mounted secrets/configs
+        fsGroup: 2000
+        # Use RuntimeDefault seccomp profile (EKS AL2 / Bottlerocket compatible)
+        seccompProfile:
+          type: RuntimeDefault
+
+      # ── Topology — spread pods across AWS Availability Zones ──────────────
+      topologySpreadConstraints:
+        - maxSkew: 1
+          # EKS nodes are automatically labelled with their AZ
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: myapp
+
+      # ── Affinity — prevent co-scheduling on the same node ─────────────────
+      affinity:
+        podAntiAffinity:
+          # Preferred (soft) rule — try not to place two MyApp pods on the same node
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: myapp
+                topologyKey: kubernetes.io/hostname
+
+      # ── Init container — wait for the database to be reachable ────────────
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          # Simple TCP connectivity check before the main container starts
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z $(DB_HOST) 5432; do
+                echo "Waiting for database at $DB_HOST:5432..."
+                sleep 3
+              done
+              echo "Database is reachable."
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_HOST
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+      # ── Main application container ─────────────────────────────────────────
+      containers:
+        - name: myapp
+          # Replace with your actual image in ECR or another registry
+          # Example ECR URI: 123456789012.dkr.ecr.us-east-1.amazonaws.com/myapp:1.0.0
+          image: myapp:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # ── Container-level security context (EKS hardening) ──────────────
+          securityContext:
+            # Do not allow privilege escalation (e.g., sudo / SUID binaries)
+            allowPrivilegeEscalation: false
+            # Mount root filesystem as read-only — prevents runtime tampering
+            readOnlyRootFilesystem: true
+            # Ensure container does not run as root
+            runAsNonRoot: true
+            runAsUser: 1000
+            # Drop ALL Linux capabilities — re-add only what is strictly needed
+            capabilities:
+              drop: ["ALL"]
+
+          # ── Resource requests and limits ───────────────────────────────────
+          resources:
+            requests:
+              # Guaranteed CPU allocation for scheduling decisions
+              cpu: "100m"
+              # Guaranteed memory allocation
+              memory: "128Mi"
+            limits:
+              # Hard CPU cap — prevents a single pod from starving neighbours
+              cpu: "500m"
+              # Hard memory cap — OOMKiller triggers if exceeded
+              memory: "512Mi"
+
+          # ── Environment variables from ConfigMap ───────────────────────────
+          envFrom:
+            - configMapRef:
+                name: myapp-config
+
+          # ── Sensitive environment variables from Secret ────────────────────
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_PASSWORD
+            - name: API_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: API_SECRET_KEY
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: JWT_SECRET
+            # Downward API — expose pod name and namespace to the application
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+
+          # ── Liveness probe — restart the pod if the app is deadlocked ──────
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: http
+            # Wait for the app to start before the first check
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            # Restart after 3 consecutive failures
+            failureThreshold: 3
+
+          # ── Readiness probe — remove from Service endpoints if not ready ───
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            # Require 2 consecutive successes before marking ready
+            successThreshold: 2
+            failureThreshold: 3
+
+          # ── Startup probe — gives extra time during slow cold starts ────────
+          startupProbe:
+            httpGet:
+              path: /healthz/live
+              port: http
+            # Allow up to 60 seconds for the app to start (30 × 2s)
+            failureThreshold: 30
+            periodSeconds: 2
+
+          # ── Volume mounts ──────────────────────────────────────────────────
+          volumeMounts:
+            # Writable temp directory (required because root FS is read-only)
+            - name: tmp-dir
+              mountPath: /tmp
+            # Application cache directory
+            - name: cache-dir
+              mountPath: /app/cache
+
+      # ── Volumes ─────────────────────────────────────────────────────────────
+      volumes:
+        # In-memory ephemeral volume for /tmp (read-only root FS workaround)
+        - name: tmp-dir
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+        # In-memory ephemeral cache volume
+        - name: cache-dir
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+
+      # ── Graceful shutdown ────────────────────────────────────────────────────
+      # Allow 30 seconds for in-flight requests to complete before SIGKILL
+      terminationGracePeriodSeconds: 30
+
+      # ── Image pull policy ────────────────────────────────────────────────────
+      # If using a private ECR registry, configure an imagePullSecret or
+      # attach the AmazonEC2ContainerRegistryReadOnly policy to the node role.
+      # imagePullSecrets:
+      #   - name: ecr-pull-secret

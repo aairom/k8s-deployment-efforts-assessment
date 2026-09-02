@@ -1,0 +1,191 @@
+# =============================================================================
+# DEPLOYMENT — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f deployment.yaml
+#
+# Notes:
+#   - Uses standard upstream Kubernetes Deployment (not DeploymentConfig)
+#   - Image pulled from IBM Container Registry (ICR) — us.icr.io
+#     IKS auto-injects the 'all-icr-io' imagePullSecret into every namespace,
+#     so no explicit imagePullSecrets entry is required for ICR images.
+#   - Pod Security: no special SCC needed (IKS uses Pod Security Admission)
+#     The namespace should be labelled with the appropriate PSA mode.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: kubectl
+    platform: iks-vpc
+spec:
+  replicas: 3  # Spread across 3 VPC zones for HA (see topologySpreadConstraints)
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-downtime rolling update
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: "1.0.0"
+      annotations:
+        # Prometheus scraping — picked up by IBM Cloud Monitoring Sysdig agent
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: myapp-sa
+
+      # Spread pods evenly across IBM Cloud VPC availability zones (us-south-1,2,3)
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: myapp
+
+      # Prefer spreading pods across different physical worker nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: myapp
+                topologyKey: kubernetes.io/hostname
+
+      # IKS auto-injects the all-icr-io secret; explicit entry only needed
+      # if pulling from a non-ICR private registry.
+      # imagePullSecrets:
+      #   - name: my-custom-registry-secret
+
+      containers:
+        - name: myapp
+          # Pull from IBM Container Registry (us-south region namespace)
+          image: us.icr.io/myapp-namespace/myapp:1.0.0
+          imagePullPolicy: Always  # Ensures the latest digest is always pulled
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          # Environment from ConfigMap
+          envFrom:
+            - configMapRef:
+                name: myapp-config
+
+          # Individual sensitive env vars from Secret
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: JWT_SECRET
+            - name: IBM_CLOUD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: IBM_CLOUD_API_KEY
+            # Downward API: expose pod metadata to the application
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          resources:
+            requests:
+              cpu: 100m      # Minimum CPU guaranteed to the pod
+              memory: 128Mi  # Minimum memory guaranteed
+            limits:
+              cpu: 500m      # Hard cap — prevents noisy-neighbour on VPC worker
+              memory: 256Mi  # OOMKill threshold
+
+          # Liveness probe: restart the container if the app hangs
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # Readiness probe: remove pod from Service endpoints if not ready
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          # Startup probe: give the app extra time to start before liveness kicks in
+          startupProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: myapp-data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+
+          # Security hardening: run as non-root
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1001
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: myapp-data
+          persistentVolumeClaim:
+            claimName: myapp-data-pvc
+        # Writable /tmp volume since root FS is read-only
+        - name: tmp
+          emptyDir: {}
+
+      # Graceful shutdown: wait for in-flight requests to complete
+      terminationGracePeriodSeconds: 60
+
+      # Security context at pod level
+      securityContext:
+        fsGroup: 1001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault

@@ -1,0 +1,80 @@
+# =============================================================================
+# ROUTE — ROKS (Red Hat OpenShift on IBM Cloud)
+# Platform: ROKS — OpenShift 4.x on IBM Cloud VPC
+# Apply with: oc apply -f route.yaml
+#
+# OpenShift Route is the native way to expose HTTP/HTTPS services externally.
+# It is handled by the OpenShift Router (HAProxy), which is automatically
+# provisioned and managed by ROKS/IBM Cloud.
+#
+# IBM ROKS automatically assigns a cluster-level wildcard domain:
+#   *.apps.<CLUSTER_NAME>.<REGION>.containers.appdomain.cloud
+# All Routes in the cluster are served under this domain by default.
+#
+# TLS termination modes:
+#   edge        — TLS terminated at the Router, plain HTTP to the pod (most common)
+#   passthrough — TLS passed directly to the pod (pod handles TLS)
+#   reencrypt   — TLS terminated at Router, re-encrypted to the pod
+#
+# This Route uses 'edge' TLS with a certificate automatically managed by
+# IBM Certificate Manager for the IBM-provided wildcard domain.
+# =============================================================================
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: myapp-route
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Allow only HTTPS traffic (redirect HTTP → HTTPS)
+    haproxy.router.openshift.io/hsts_header: "max-age=31536000;includeSubDomains;preload"
+    # Timeout for connections (in seconds) — useful for long-running API calls
+    haproxy.router.openshift.io/timeout: "60s"
+    # Rate limiting via Router annotations (OpenShift 4.12+)
+    # haproxy.router.openshift.io/rate-limit-connections: "true"
+    # haproxy.router.openshift.io/rate-limit-connections.rate-http: "100"
+    # Load balancing algorithm: leastconn | roundrobin | source (sticky)
+    haproxy.router.openshift.io/balance: "leastconn"
+    # Enable sticky sessions via cookie
+    haproxy.router.openshift.io/cookie_name: "MYAPP_ROUTE"
+    # haproxy.router.openshift.io/disable_cookies: "false"
+spec:
+  # IBM-provided wildcard subdomain — available immediately after cluster creation
+  # Replace with your custom domain if needed (add CNAME in your DNS provider)
+  host: myapp.apps.<CLUSTER_NAME>.<REGION>.containers.appdomain.cloud
+  # Custom domain example:
+  # host: myapp.example.com
+
+  port:
+    targetPort: http  # Must match the Service port name
+
+  to:
+    kind: Service
+    name: myapp-svc
+    weight: 100  # 100% traffic to this service (useful for A/B routing with multiple routes)
+
+  tls:
+    # 'edge': TLS is terminated at the OpenShift Router.
+    # The pod receives plain HTTP traffic on port 8080.
+    # IBM ROKS manages the TLS certificate for the IBM-provided domain.
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect  # Redirect HTTP → HTTPS
+
+    # For custom domain TLS: provide your own certificate and key below.
+    # Leave empty to use the Router's default (IBM-managed) wildcard certificate.
+    # certificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   <your-cert-here>
+    #   -----END CERTIFICATE-----
+    # key: |
+    #   -----BEGIN PRIVATE KEY-----
+    #   <your-key-here>
+    #   -----END PRIVATE KEY-----
+    # caCertificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   <your-ca-cert-here>
+    #   -----END CERTIFICATE-----
+
+  wildcardPolicy: None

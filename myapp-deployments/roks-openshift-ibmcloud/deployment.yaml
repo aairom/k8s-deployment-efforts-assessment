@@ -1,0 +1,207 @@
+# =============================================================================
+# DEPLOYMENT — ROKS (Red Hat OpenShift on IBM Cloud)
+# Platform: ROKS — OpenShift 4.x on IBM Cloud VPC
+# Apply with: oc apply -f deployment.yaml
+#
+# Decision: standard Kubernetes Deployment (not DeploymentConfig)
+#   OpenShift still supports DeploymentConfig (DC) for legacy compatibility,
+#   but the OpenShift documentation recommends using standard Deployment objects
+#   for new workloads (DeploymentConfig may be deprecated in future OCP versions).
+#   Deployment objects support all Kubernetes-native HPA, rollout, and GitOps
+#   tooling without the OpenShift-specific DC controller overhead.
+#
+# Image source options for ROKS:
+#   1. IBM Container Registry (ICR):  us.icr.io/<namespace>/myapp:1.0.0
+#   2. OpenShift internal registry:   image-registry.openshift-image-registry.svc:5000/myapp/myapp:1.0.0
+#   3. Red Hat Quay.io:               quay.io/<org>/myapp:1.0.0
+#
+# OpenShift Image Stream (optional):
+#   Create an ImageStream to track image updates and trigger automatic rollouts:
+#   oc import-image myapp:1.0.0 --from=us.icr.io/myapp-namespace/myapp:1.0.0 --confirm
+#   Then reference: image-registry.openshift-image-registry.svc:5000/myapp/myapp:1.0.0
+#
+# Security Context Constraints (SCCs):
+#   This Deployment runs under the 'restricted-v2' SCC (default on OCP 4.11+).
+#   The pod runs as a non-root user with a UID allocated from the namespace's
+#   UID range (auto-assigned by OpenShift — do NOT hard-code runAsUser unless
+#   you have bound the SA to a specific SCC that permits a fixed UID).
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: kubectl
+    platform: roks-openshift
+  annotations:
+    # OpenShift Image Change trigger hint (for reference — not functional on Deployment)
+    # For automatic rollout on image change, use an ImageStream + DeploymentConfig,
+    # or configure a Tekton/ArgoCD pipeline to update the image tag.
+    image.openshift.io/triggers: >-
+      [{"from":{"kind":"ImageStreamTag","name":"myapp:1.0.0","namespace":"myapp"},"fieldPath":"spec.template.spec.containers[?(@.name==\"myapp\")].image"}]
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: "1.0.0"
+      annotations:
+        # Prometheus user-workload monitoring (UWM) — OpenShift built-in
+        # Requires UWM to be enabled in cluster-monitoring-config ConfigMap
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: myapp-sa
+
+      # Spread pods evenly across IBM Cloud VPC availability zones
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: myapp
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: myapp
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: myapp
+          # Pull from IBM Container Registry (ICR) — auto-injected pull secret on ROKS
+          image: us.icr.io/myapp-namespace/myapp:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: myapp-config
+
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: JWT_SECRET
+            - name: IBM_CLOUD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: IBM_CLOUD_API_KEY
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          startupProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: myapp-data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+
+          # OpenShift 'restricted-v2' SCC Security Context:
+          # - Do NOT set runAsUser — OpenShift assigns a UID from the namespace range
+          # - allowPrivilegeEscalation: false is REQUIRED by restricted-v2
+          # - readOnlyRootFilesystem: true is best practice
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            # OpenShift restricted-v2 requires runAsNonRoot: true
+            runAsNonRoot: true
+            # seccompProfile is enforced by restricted-v2 automatically,
+            # but explicit declaration is good practice:
+            seccompProfile:
+              type: RuntimeDefault
+
+      volumes:
+        - name: myapp-data
+          persistentVolumeClaim:
+            claimName: myapp-data-pvc
+        - name: tmp
+          emptyDir: {}
+
+      terminationGracePeriodSeconds: 60
+
+      # Pod-level security context — fsGroup ensures the PVC is group-writable
+      # On OpenShift, fsGroup is set automatically from the namespace UID range.
+      # Explicitly setting it here ensures compatibility across OCP versions.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault

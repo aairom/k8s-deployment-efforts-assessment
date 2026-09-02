@@ -1,0 +1,68 @@
+# =============================================================================
+# Kustomization — myapp (EKS / Amazon)
+# =============================================================================
+# This file is the Kustomize entry point for the MyApp EKS deployment.
+#
+# Deploy everything with a single command:
+#   kubectl apply -k myapp-deployments/eks-amazon/
+#
+# Or preview what would be applied (dry-run):
+#   kubectl apply -k myapp-deployments/eks-amazon/ --dry-run=client
+#
+# Build the final YAML bundle without applying it:
+#   kubectl kustomize myapp-deployments/eks-amazon/
+#
+# Resource application order:
+#   Kustomize applies resources in the order they are listed below.
+#   Namespace and ServiceAccount are listed first to ensure they exist before
+#   other resources that reference them.
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ── Metadata ──────────────────────────────────────────────────────────────────
+# Common labels added to ALL resources managed by this Kustomization
+commonLabels:
+  managed-by: kustomize
+  platform: eks-amazon
+
+# ── Namespace override ────────────────────────────────────────────────────────
+# All resources will be deployed into the 'myapp' namespace.
+# Resources that already declare a namespace are not overridden.
+namespace: myapp
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+# Listed in dependency order: foundational resources first, workloads last.
+resources:
+  # 1. Namespace — must exist before any namespaced resource
+  - myapp-namespace.yaml
+
+  # 2. ServiceAccount — must exist before the Deployment references it
+  - myapp-serviceaccount.yaml
+
+  # 3. ConfigMap — must exist before the Deployment mounts it
+  - myapp-configmap.yaml
+
+  # 4. Secret management — ESO SecretStore + ExternalSecret (no hardcoded values)
+  #    ESO will synthesize the live myapp-secret K8s Secret from AWS Secrets Manager.
+  #    The myapp-secret.yaml file is an empty sentinel kept for documentation only.
+  - myapp-secretstore.yaml
+  - myapp-externalsecret.yaml
+
+  # 5. NetworkPolicy — enforced as soon as pods are created
+  - myapp-networkpolicy.yaml
+
+  # 6. Deployment — creates the application pods
+  - myapp-deployment.yaml
+
+  # 7. Service — stable internal DNS endpoint for the pods
+  - myapp-service.yaml
+
+  # 8. Ingress — provisions the AWS ALB and routes external traffic
+  - myapp-ingress.yaml
+
+  # 9. HorizontalPodAutoscaler — attaches after the Deployment exists
+  - myapp-hpa.yaml
+
+  # 10. PodDisruptionBudget — enforces availability during node maintenance
+  - myapp-pdb.yaml

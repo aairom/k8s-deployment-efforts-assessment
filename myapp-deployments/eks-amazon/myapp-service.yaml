@@ -1,0 +1,45 @@
+# =============================================================================
+# Service — myapp-svc
+# =============================================================================
+# ClusterIP Service: exposes MyApp pods internally within the cluster.
+#
+# Design rationale:
+#   - ClusterIP is used because external traffic is handled by the Ingress
+#     (AWS ALB), not by the Service itself.
+#   - The AWS Load Balancer Controller targets pods directly (target-type: ip),
+#     so the Service acts as a stable DNS endpoint inside the cluster.
+#   - The selector must match the pod labels defined in the Deployment.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: service
+    version: v1
+  annotations:
+    # Human-readable description of this Service
+    service.kubernetes.io/description: "Internal ClusterIP service for MyApp"
+spec:
+  # ClusterIP — only reachable from within the cluster
+  # Traffic from the internet arrives via the ALB Ingress → directly to pod IPs
+  type: ClusterIP
+
+  # Selector must exactly match the pod template labels in the Deployment
+  selector:
+    app: myapp
+    version: v1
+
+  ports:
+    - name: http
+      # Port exposed on the Service (cluster-internal)
+      port: 80
+      # Port on the container (must match containerPort in the Deployment)
+      targetPort: http
+      protocol: TCP
+
+  # Session affinity — None means requests are load-balanced across all pods
+  sessionAffinity: None

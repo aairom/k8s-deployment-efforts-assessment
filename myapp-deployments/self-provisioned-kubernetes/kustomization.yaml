@@ -1,0 +1,34 @@
+# =============================================================================
+# KUSTOMIZATION — Self-Provisioned Kubernetes
+# Apply the full stack with: kubectl apply -k .
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: myapp
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  # Secret management — choose ONE strategy (see README-secrets.md):
+  #   Strategy A (Sealed Secrets): uncomment sealed-secret.yaml
+  #   Strategy B (ESO + Vault):    uncomment secretstore.yaml + externalsecret.yaml
+  #
+  # Strategy A — Sealed Secrets (Bitnami kubeseal)
+  # - sealed-secret.yaml          # ← uncomment after running kubeseal
+  #
+  # Strategy B — External Secrets Operator + HashiCorp Vault
+  # - secretstore.yaml
+  # - externalsecret.yaml
+  #
+  # The secret.yaml file is an empty sentinel (no data: block) kept for documentation.
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+
+commonLabels:
+  platform: self-provisioned-kubernetes
+  app.kubernetes.io/part-of: myapp

@@ -1,0 +1,38 @@
+# =============================================================================
+# PERSISTENT VOLUME CLAIM — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f pvc.yaml
+#
+# Storage class: ibmc-vpc-block-10iops-tier
+#   This is an IBM Cloud VPC Block Storage class pre-installed on IKS.
+#   Other available IKS VPC storage classes:
+#     ibmc-vpc-block-general-purpose  (3 IOPS/GB)
+#     ibmc-vpc-block-5iops-tier       (5 IOPS/GB)
+#     ibmc-vpc-block-10iops-tier      (10 IOPS/GB) — high-performance
+#     ibmc-vpc-block-retain-*         (retain reclaim policy variants)
+#
+# NOTE: IBM Cloud VPC Block Storage is ReadWriteOnce (RWO) only.
+# For shared ReadWriteMany (RWX) use IBM Cloud File Storage:
+#   storageClassName: ibmc-file-gold  (NFS-backed, multi-zone aware)
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myapp-data-pvc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: storage
+  annotations:
+    # IBM VPC block storage zone placement — set to match the worker node zone
+    # for optimal latency. Leave unset for automatic zone selection.
+    ibm.io/zone: "us-south-1"
+    volume.beta.kubernetes.io/storage-provisioner: "vpc.block.csi.ibm.io"
+spec:
+  # RWO is the only access mode supported by IBM Cloud VPC Block Storage
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ibmc-vpc-block-10iops-tier
+  resources:
+    requests:
+      storage: 20Gi

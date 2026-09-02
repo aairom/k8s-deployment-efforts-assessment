@@ -1,0 +1,96 @@
+# =============================================================================
+# INGRESS — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f ingress.yaml
+#
+# IKS provides a managed IBM Cloud VPC Application Load Balancer (ALB) Ingress
+# controller based on NGINX. It is automatically provisioned per cluster zone.
+#
+# IBM automatically assigns a cluster subdomain:
+#   <cluster-name>.<region>.containers.appdomain.cloud
+# and provisions a wildcard TLS certificate managed by IBM Certificate Manager.
+#
+# Custom domain: Replace myapp.example.com with your domain and add a CNAME
+#   pointing to the IBM-provided cluster subdomain in your DNS provider.
+#
+# Ingress class: "public-iks-k8s-nginx"
+#   IBM IKS VPC clusters use this ingress class name by default.
+#   For private ALBs use: "private-iks-k8s-nginx"
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: ingress
+  annotations:
+    # -------------------------------------------------------------------------
+    # IBM Cloud IKS-specific Ingress annotations
+    # -------------------------------------------------------------------------
+
+    # Use the IBM-managed public ALB (NGINX-based) for this cluster
+    kubernetes.io/ingress.class: "public-iks-k8s-nginx"
+
+    # Redirect all HTTP traffic to HTTPS (recommended for production)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # Enable sticky sessions (cookie-based) — useful for stateful apps
+    # nginx.ingress.kubernetes.io/affinity: "cookie"
+    # nginx.ingress.kubernetes.io/session-cookie-name: "MYAPP_SESSION"
+    # nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+
+    # Proxy body size — increase for file upload endpoints
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+    # Connection and read timeouts (seconds)
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+
+    # Rate limiting — 100 requests/second per client IP
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+
+    # CORS — enable if your frontend is on a different origin
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "https://myapp-frontend.example.com"
+
+    # IBM Certificate Manager TLS secret — auto-managed by IKS for the
+    # IBM-provided subdomain. For custom domains, create a TLS secret manually
+    # or use cert-manager with Let's Encrypt.
+    # ingress.bluemix.net/redirect-to-https: "True"
+spec:
+  # TLS termination — IBM ALB handles TLS using the IBM-provisioned wildcard cert
+  # For a custom domain, create a TLS secret and reference it here:
+  # tls:
+  #   - hosts:
+  #       - myapp.example.com
+  #     secretName: myapp-tls-secret
+  tls:
+    - hosts:
+        - myapp.<CLUSTER_NAME>.us-south.containers.appdomain.cloud
+      secretName: <CLUSTER_NAME>  # IBM auto-manages this secret name
+  rules:
+    # IBM-provided subdomain (always available, no DNS setup needed)
+    - host: myapp.<CLUSTER_NAME>.us-south.containers.appdomain.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-svc
+                port:
+                  number: 80
+    # Custom domain (optional — add CNAME in DNS pointing to IBM subdomain)
+    # - host: myapp.example.com
+    #   http:
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    #         backend:
+    #           service:
+    #             name: myapp-svc
+    #             port:
+    #               number: 80

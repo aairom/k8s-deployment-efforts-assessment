@@ -1,0 +1,43 @@
+# =============================================================================
+# SERVICE — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f service.yaml
+#
+# ADAPTATION NOTES:
+#   On a self-provisioned cluster there is typically no cloud load balancer
+#   integration. External traffic is routed via an Ingress controller.
+#   The Service type is ClusterIP — the Ingress controller routes to it.
+#
+#   If you DO have a load balancer integration (MetalLB for bare-metal,
+#   or a cloud-provider CCM), you can change type to LoadBalancer and
+#   configure the appropriate annotations for your environment.
+#
+#   MetalLB example (bare-metal L2 or BGP):
+#     type: LoadBalancer
+#     annotations:
+#       metallb.universe.tf/address-pool: "production-public-ips"
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+  annotations:
+    # Prometheus ServiceMonitor selector label (if using Prometheus Operator)
+    prometheus.io/scrape: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090

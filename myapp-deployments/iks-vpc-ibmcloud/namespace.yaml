@@ -1,0 +1,18 @@
+# =============================================================================
+# NAMESPACE — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f namespace.yaml
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    # Standard Kubernetes labels for organisation and policy targeting
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/managed-by: kubectl
+    environment: production
+    platform: iks-vpc
+  annotations:
+    # IBM Cloud resource group tag — used for IAM & billing attribution
+    ibm-cloud.kubernetes.io/resource-group: "myapp-rg"

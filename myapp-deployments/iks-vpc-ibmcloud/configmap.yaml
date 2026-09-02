@@ -1,0 +1,36 @@
+# =============================================================================
+# CONFIGMAP — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f configmap.yaml
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+data:
+  # Application-level configuration
+  APP_ENV: "production"
+  APP_PORT: "8080"
+  APP_LOG_LEVEL: "info"
+  APP_MAX_CONNECTIONS: "100"
+
+  # IBM Cloud region and resource group — used by the app to call IBM Cloud APIs
+  IBM_CLOUD_REGION: "us-south"
+  IBM_CLOUD_RESOURCE_GROUP: "myapp-rg"
+
+  # IBM Cloud Object Storage endpoint (private — stays within IBM Cloud network)
+  # Using the private endpoint avoids public egress charges
+  COS_ENDPOINT: "https://s3.private.us-south.cloud-object-storage.appdomain.cloud"
+  COS_BUCKET: "myapp-data-bucket"
+
+  # Database connection (non-sensitive portion — credentials in Secret)
+  DB_HOST: "myapp-db.private.us-south.databases.appdomain.cloud"
+  DB_PORT: "5432"
+  DB_NAME: "myapp_production"
+
+  # IBM Cloud Monitoring (Sysdig) endpoint hint — used by the app SDK if applicable
+  MONITORING_ENDPOINT: "https://us-south.monitoring.cloud.ibm.com"

@@ -1,0 +1,109 @@
+# =============================================================================
+# INGRESS — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f ingress.yaml
+#
+# PREREQUISITES — You must install an Ingress controller first:
+#
+#   NGINX Ingress Controller (most common):
+#     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/baremetal/deploy.yaml
+#   OR via Helm:
+#     helm upgrade --install ingress-nginx ingress-nginx \
+#       --repo https://kubernetes.github.io/ingress-nginx \
+#       --namespace ingress-nginx --create-namespace
+#
+#   Traefik (alternative):
+#     helm upgrade --install traefik traefik/traefik -n traefik --create-namespace
+#     (Change ingressClassName to 'traefik' below)
+#
+# TLS CERTIFICATE SETUP:
+#   Install cert-manager for automatic TLS certificate provisioning:
+#     kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+#   Then create a ClusterIssuer for Let's Encrypt (requires public DNS and port 80 access):
+#     apiVersion: cert-manager.io/v1
+#     kind: ClusterIssuer
+#     metadata:
+#       name: letsencrypt-prod
+#     spec:
+#       acme:
+#         server: https://acme-v02.api.letsencrypt.org/directory
+#         email: admin@example.com
+#         privateKeySecretRef:
+#           name: letsencrypt-prod
+#         solvers:
+#           - http01:
+#               ingress:
+#                 class: nginx
+#
+# ADAPTATION NOTES:
+#   - Replace 'myapp.example.com' with your actual domain name.
+#   - Ensure your DNS A/CNAME record points to the Ingress controller's external IP.
+#   - For bare-metal without external DNS, use nip.io or xip.io for local testing:
+#       host: myapp.192-168-1-100.nip.io
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: ingress
+  annotations:
+    # NGINX Ingress class — must match the deployed ingress controller
+    kubernetes.io/ingress.class: "nginx"   # Legacy annotation (Kubernetes < 1.18)
+    # Modern approach (Kubernetes 1.18+): use spec.ingressClassName below
+
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # cert-manager: automatically provision TLS certificate from Let's Encrypt
+    # Requires cert-manager + a ClusterIssuer named 'letsencrypt-prod'
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Proxy body size limit (for file uploads)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+
+    # CORS (uncomment if needed)
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "https://frontend.example.com"
+
+    # Sticky sessions
+    # nginx.ingress.kubernetes.io/affinity: "cookie"
+    # nginx.ingress.kubernetes.io/session-cookie-name: "MYAPP_SESSION"
+    # nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+
+    # ModSecurity WAF (NGINX Ingress supports it natively)
+    # nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    # nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+
+spec:
+  # Modern ingress class (Kubernetes 1.18+) — preferred over annotation
+  ingressClassName: nginx
+
+  tls:
+    - hosts:
+        - myapp.example.com  # ADAPT: replace with your actual domain
+      # cert-manager will create this secret automatically from Let's Encrypt
+      secretName: myapp-tls-cert
+
+  rules:
+    - host: myapp.example.com  # ADAPT: replace with your actual domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-svc
+                port:
+                  number: 80

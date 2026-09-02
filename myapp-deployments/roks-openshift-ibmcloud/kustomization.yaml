@@ -1,0 +1,27 @@
+# =============================================================================
+# KUSTOMIZATION — ROKS (Red Hat OpenShift on IBM Cloud)
+# Apply the full stack with: oc apply -k .
+#   (or: kubectl apply -k . if oc is not available)
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: myapp
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - configmap.yaml
+  # Secret management — ESO SecretStore + ExternalSecret (no hardcoded values)
+  # ESO synthesizes the live myapp-secret K8s Secret from IBM Secrets Manager.
+  - secretstore.yaml
+  - externalsecret.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - route.yaml
+  - hpa.yaml
+
+commonLabels:
+  platform: roks-openshift-ibmcloud
+  app.kubernetes.io/part-of: myapp

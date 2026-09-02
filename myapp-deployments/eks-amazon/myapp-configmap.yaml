@@ -1,0 +1,42 @@
+# =============================================================================
+# ConfigMap — myapp-config
+# =============================================================================
+# Stores non-sensitive application configuration parameters.
+# Injected into the Deployment as environment variables.
+# Separating configuration from the container image allows updates without
+# rebuilding the image (12-factor app principle).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: config
+    version: v1
+data:
+  # Application HTTP listening port
+  APP_PORT: "8080"
+
+  # Log verbosity level (debug | info | warn | error)
+  LOG_LEVEL: "info"
+
+  # Application runtime environment label
+  APP_ENV: "production"
+
+  # External API base URL (replace with actual endpoint)
+  API_BASE_URL: "https://api.example.com/v1"
+
+  # Maximum number of database connections in the pool
+  DB_POOL_SIZE: "10"
+
+  # Request timeout in milliseconds
+  REQUEST_TIMEOUT_MS: "5000"
+
+  # Feature flag — enable the new dashboard UI
+  FEATURE_NEW_DASHBOARD: "true"
+
+  # CORS allowed origins (comma-separated)
+  CORS_ALLOWED_ORIGINS: "https://app.example.com,https://admin.example.com"

@@ -1,0 +1,41 @@
+# =============================================================================
+# CONFIGMAP — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f configmap.yaml
+#
+# ADAPTATION NOTES:
+#   Replace all placeholder values with your environment-specific settings.
+#   For GitOps workflows (ArgoCD, Flux), this ConfigMap is typically managed
+#   in a Git repository with environment-specific overlays via Kustomize.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+data:
+  APP_ENV: "production"
+  APP_PORT: "8080"
+  APP_LOG_LEVEL: "info"
+  APP_MAX_CONNECTIONS: "100"
+
+  # Replace with your actual database host (internal DNS or IP)
+  # For on-prem: use the FQDN of your database server
+  # For cloud VM: use the internal/private IP or DNS name
+  DB_HOST: "myapp-db.internal.example.com"
+  DB_PORT: "5432"
+  DB_NAME: "myapp_production"
+
+  # Object/file storage endpoint — adapt to your storage solution:
+  #   MinIO:   http://minio.storage.svc.cluster.local:9000
+  #   Ceph RGW: http://ceph-rgw.storage.svc.cluster.local:7480
+  #   AWS S3:  https://s3.amazonaws.com
+  STORAGE_ENDPOINT: "http://minio.storage.svc.cluster.local:9000"
+  STORAGE_BUCKET: "myapp-data-bucket"
+
+  # Internal service mesh / monitoring endpoints (adapt to your stack)
+  # Prometheus Pushgateway (if using push-based metrics):
+  # METRICS_PUSHGATEWAY: "http://prometheus-pushgateway.monitoring.svc.cluster.local:9091"

@@ -1,0 +1,28 @@
+# =============================================================================
+# NAMESPACE — ROKS (Red Hat OpenShift on IBM Cloud)
+# Platform: ROKS — OpenShift 4.x on IBM Cloud VPC
+# Apply with: oc apply -f namespace.yaml
+#
+# On OpenShift, creating a Namespace also creates a corresponding Project object.
+# You can also use: oc new-project myapp --description="MyApp production namespace"
+#
+# OpenShift Projects carry additional metadata and support quota/limit ranges
+# via the namespace-level ResourceQuota and LimitRange objects.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/managed-by: kubectl
+    environment: production
+    platform: roks-openshift
+    # OpenShift monitoring: set to "true" to allow user-workload monitoring
+    # for this namespace (requires cluster-monitoring-config to enable UWM)
+    openshift.io/cluster-monitoring: "true"
+  annotations:
+    openshift.io/description: "MyApp production workload namespace"
+    openshift.io/display-name: "MyApp Production"
+    # IBM Cloud resource group tag for billing
+    ibm-cloud.kubernetes.io/resource-group: "myapp-rg"

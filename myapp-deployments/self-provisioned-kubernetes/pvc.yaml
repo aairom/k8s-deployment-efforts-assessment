@@ -1,0 +1,45 @@
+# =============================================================================
+# PERSISTENT VOLUME CLAIM — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f pvc.yaml
+#
+# ADAPTATION NOTES:
+#   No storage classes exist by default on a self-provisioned cluster.
+#   You must install a CSI driver and create StorageClass objects first.
+#
+#   Common storage options for self-provisioned clusters:
+#
+#   On-premises:
+#     Rook-Ceph:     storageClassName: rook-ceph-block  (RWO) or rook-cephfs (RWX)
+#     Longhorn:      storageClassName: longhorn           (RWO)
+#     NFS (manual):  storageClassName: nfs-client         (RWX)
+#     OpenEBS:       storageClassName: openebs-hostpath   (RWO, dev/test only)
+#
+#   Cloud VM (non-managed):
+#     k3s default:   storageClassName: local-path        (RWO, node-local)
+#     kubeadm + AWS: storageClassName: gp2               (RWO, requires AWS EBS CSI)
+#     kubeadm + GCP: storageClassName: standard          (RWO, requires GCP PD CSI)
+#
+#   This manifest uses 'local-path' as a generic placeholder.
+#   Replace with your actual provisioner's StorageClass name.
+#   For production workloads, do NOT use local-path (no replication/HA).
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myapp-data-pvc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+    # For shared storage (Ceph FS, NFS):
+    # - ReadWriteMany
+  # ADAPT: Replace 'local-path' with your CSI-provisioned storage class.
+  # For production use Rook-Ceph, Longhorn, or a cloud-specific CSI driver.
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi

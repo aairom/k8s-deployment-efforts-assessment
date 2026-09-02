@@ -1,0 +1,40 @@
+# =============================================================================
+# SERVICE — ROKS (Red Hat OpenShift on IBM Cloud)
+# Platform: ROKS — OpenShift 4.x on IBM Cloud VPC
+# Apply with: oc apply -f service.yaml
+#
+# On OpenShift, external traffic typically enters via an OpenShift Route
+# (defined in route.yaml), which is backed by the OpenShift Router (HAProxy).
+# The Service is therefore ClusterIP — internal traffic only.
+#
+# If you need direct L4 load balancing (not via the Router), you can create
+# a LoadBalancer-type Service, which provisions an IBM Cloud VPC NLB.
+# The same VPC NLB annotations as IKS apply on ROKS.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+  annotations:
+    # Optional: expose via IBM Cloud VPC Network Load Balancer (Layer 4)
+    # Uncomment to bypass the OpenShift Router for direct NLB access:
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: "public"
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-vpc-lb-name: "myapp-nlb"
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features: "nlb"
+spec:
+  type: ClusterIP
+  selector:
+    app: myapp
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090

@@ -1,0 +1,104 @@
+# =============================================================================
+# Ingress — myapp-ingress
+# =============================================================================
+# Exposes MyApp to the internet via the AWS Load Balancer Controller (ALB).
+#
+# Prerequisites:
+#   - AWS Load Balancer Controller must be installed in the cluster
+#     (typically via Helm in the kube-system namespace).
+#   - An ACM certificate must be provisioned for the target domain.
+#   - Subnet tags must be set:
+#       Public subnets:  kubernetes.io/role/elb = 1
+#       Private subnets: kubernetes.io/role/internal-elb = 1
+#
+# Key EKS-specific annotations:
+#   - scheme: internet-facing  → ALB is publicly accessible
+#   - target-type: ip          → ALB routes directly to pod IPs (bypasses kube-proxy)
+#   - certificate-arn          → terminates TLS at the ALB using ACM
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: ingress
+    version: v1
+  annotations:
+    # ── ALB Controller — ingress class ────────────────────────────────────────
+    # Instructs the AWS Load Balancer Controller to manage this Ingress
+    kubernetes.io/ingress.class: "alb"
+
+    # ── ALB scheme ────────────────────────────────────────────────────────────
+    # internet-facing: ALB is reachable from the public internet
+    # internal:        ALB is only reachable from within the VPC
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+
+    # ── Target type ───────────────────────────────────────────────────────────
+    # ip:       ALB routes directly to pod IPs (recommended for EKS)
+    # instance: ALB routes to node IPs via NodePort (legacy mode)
+    alb.ingress.kubernetes.io/target-type: "ip"
+
+    # ── TLS termination via ACM ───────────────────────────────────────────────
+    # Replace with the actual ARN of your ACM certificate
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+    # ── HTTPS redirect ────────────────────────────────────────────────────────
+    # Redirect all HTTP (port 80) requests to HTTPS (port 443)
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+
+    # ── Listener ports ────────────────────────────────────────────────────────
+    # ALB listens on both HTTP (for redirect) and HTTPS
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+
+    # ── Security groups ───────────────────────────────────────────────────────
+    # Optionally restrict which security groups are attached to the ALB
+    # Replace with your actual security group ID(s)
+    # alb.ingress.kubernetes.io/security-groups: "sg-0123456789abcdef0"
+
+    # ── Health check configuration ────────────────────────────────────────────
+    alb.ingress.kubernetes.io/healthcheck-path: "/healthz/ready"
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
+    # ── Load balancing algorithm ──────────────────────────────────────────────
+    # round_robin (default) | least_outstanding_requests
+    alb.ingress.kubernetes.io/load-balancer-attributes: "routing.http2.enabled=true,idle_timeout.timeout_seconds=60"
+
+    # ── Access logging to S3 (optional) ──────────────────────────────────────
+    # alb.ingress.kubernetes.io/load-balancer-attributes: "access_logs.s3.enabled=true,access_logs.s3.bucket=my-alb-logs,access_logs.s3.prefix=myapp"
+
+    # ── Tags applied to the ALB resource in AWS ───────────────────────────────
+    alb.ingress.kubernetes.io/tags: "Environment=production,Team=backend,Application=myapp"
+
+    # ── WAF integration (optional) ────────────────────────────────────────────
+    # Associate an AWS WAF Web ACL ARN for DDoS and OWASP protection
+    # alb.ingress.kubernetes.io/wafv2-acl-arn: "arn:aws:wafv2:us-east-1:123456789012:regional/webacl/myapp-waf/xxxxxxxx"
+
+spec:
+  # ── Ingress rules ─────────────────────────────────────────────────────────
+  rules:
+    # Replace with your actual domain name
+    - host: myapp.example.com
+      http:
+        paths:
+          # Route all traffic to the MyApp service
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-svc
+                port:
+                  name: http
+
+  # ── TLS configuration ─────────────────────────────────────────────────────
+  # TLS termination is handled at the ALB (via ACM annotation above).
+  # This section tells Kubernetes which hosts require TLS.
+  tls:
+    - hosts:
+        - myapp.example.com
+      # No secretName needed — certificate is managed by ACM, not a K8s Secret

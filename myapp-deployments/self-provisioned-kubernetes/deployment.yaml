@@ -1,0 +1,187 @@
+# =============================================================================
+# DEPLOYMENT — Self-Provisioned Kubernetes
+# Platform: Kubernetes installed on bare VMs (on-prem or cloud IaaS)
+# Apply with: kubectl apply -f deployment.yaml
+#
+# ADAPTATION NOTES:
+#   - Image registry: Replace 'myregistry.io' with your actual registry URL.
+#     For a self-hosted Harbor registry: harbor.internal.example.com/myapp/myapp:1.0.0
+#     For Docker Hub: docker.io/myorg/myapp:1.0.0
+#   - imagePullSecrets: Uncomment and reference your registry pull secret.
+#   - Pod Security: With the namespace labelled pod-security.kubernetes.io/enforce:restricted,
+#     the securityContext settings below are REQUIRED — the pod will be rejected without them.
+#   - Node affinity/topology: Adapt topologySpreadConstraints zone key to match
+#     the topology labels applied to your nodes (e.g., failure-domain.beta.kubernetes.io/zone
+#     for older kubeadm clusters).
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/managed-by: kubectl
+    platform: self-provisioned
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: "1.0.0"
+      annotations:
+        # Prometheus scraping — picked up by Prometheus Operator / kube-prometheus-stack
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: myapp-sa
+
+      # ADAPT: Uncomment to spread pods across physical nodes or zones.
+      # Requires nodes to be labelled with topology.kubernetes.io/zone.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname  # Spread across different nodes
+          whenUnsatisfiable: ScheduleAnyway    # Use 'DoNotSchedule' for strict HA
+          labelSelector:
+            matchLabels:
+              app: myapp
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: myapp
+                topologyKey: kubernetes.io/hostname
+
+      # ADAPT: Uncomment and update if using a private registry
+      # imagePullSecrets:
+      #   - name: myapp-registry-secret  # Created separately via kubectl create secret docker-registry
+
+      containers:
+        - name: myapp
+          # ADAPT: Replace with your actual registry/image path
+          image: myregistry.io/myapp:1.0.0
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: myapp-config
+
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: JWT_SECRET
+            - name: APP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secret
+                  key: APP_API_KEY
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          startupProbe:
+            httpGet:
+              path: /healthz/live
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+
+          volumeMounts:
+            - name: myapp-data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+
+          # Required by Pod Security Admission 'restricted' policy
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+
+      volumes:
+        - name: myapp-data
+          persistentVolumeClaim:
+            claimName: myapp-data-pvc
+        - name: tmp
+          emptyDir: {}
+
+      terminationGracePeriodSeconds: 60
+
+      securityContext:
+        fsGroup: 1001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault

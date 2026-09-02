@@ -1,0 +1,58 @@
+# =============================================================================
+# HORIZONTAL POD AUTOSCALER — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f hpa.yaml
+#
+# Scales the Deployment between 3 and 10 replicas based on CPU and memory.
+# The Cluster Autoscaler (IBM-managed add-on) will provision new VPC worker
+# nodes automatically when no schedulable capacity exists.
+#
+# To enable the IBM Cluster Autoscaler add-on:
+#   ibmcloud ks cluster addon enable cluster-autoscaler --cluster <CLUSTER_NAME>
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+  minReplicas: 3   # Minimum 3 — one per VPC availability zone for zone HA
+  maxReplicas: 10  # Maximum before Cluster Autoscaler adds new VPC worker nodes
+
+  metrics:
+    # Scale up when average CPU across pods exceeds 70%
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # Scale up when average memory usage across pods exceeds 80%
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 min before scaling down
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60  # Remove at most 1 pod per minute
+    scaleUp:
+      stabilizationWindowSeconds: 0   # Scale up immediately
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60  # Add at most 2 pods per minute

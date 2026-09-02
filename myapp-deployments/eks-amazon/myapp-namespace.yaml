@@ -1,0 +1,25 @@
+# =============================================================================
+# Namespace — myapp
+# =============================================================================
+# Namespace dédié à l'application MyApp, isolant ses ressources des autres
+# charges de travail du cluster EKS. Les labels permettent au sélecteur de
+# NetworkPolicy et aux outils d'observabilité de cibler ce namespace.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+  labels:
+    # Label applicatif — utilisé par les NetworkPolicies et les sélecteurs
+    app.kubernetes.io/name: myapp
+    # Environnement de déploiement (production | staging | dev)
+    environment: production
+    # Équipe propriétaire — utile pour le cost-allocation sur EKS
+    team: backend
+    # Version de la charte de déploiement
+    version: v1
+  annotations:
+    # Contact de l'équipe propriétaire
+    contact: "team-backend@example.com"
+    # Description fonctionnelle du namespace
+    description: "Namespace de production pour l'application MyApp"

@@ -1,0 +1,87 @@
+# =============================================================================
+# HorizontalPodAutoscaler — myapp-hpa
+# =============================================================================
+# Automatically scales the number of MyApp pods based on CPU and memory
+# utilisation metrics, as observed by the Kubernetes Metrics Server.
+#
+# Prerequisites:
+#   - Metrics Server must be deployed in the cluster (kube-system namespace).
+#     Install: kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+#
+# Scaling behaviour:
+#   - Scale-up  : triggered when average CPU > 70% OR average memory > 80%
+#   - Scale-down: stabilized over a 5-minute window to prevent flapping
+#   - Bounds    : always maintain between 2 and 10 replicas
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: autoscaler
+    version: v1
+spec:
+  # ── Target workload ────────────────────────────────────────────────────────
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+
+  # ── Replica bounds ─────────────────────────────────────────────────────────
+  # The HPA will never scale below minReplicas (ensures baseline availability)
+  minReplicas: 2
+  # The HPA will never scale above maxReplicas (prevents runaway cost)
+  maxReplicas: 10
+
+  # ── Scaling metrics ────────────────────────────────────────────────────────
+  metrics:
+    # ── CPU utilisation metric ──────────────────────────────────────────────
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          # Average CPU utilisation across all pods, relative to their requests
+          type: Utilization
+          # Scale up when average CPU utilisation exceeds 70%
+          averageUtilization: 70
+
+    # ── Memory utilisation metric ───────────────────────────────────────────
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          # Average memory utilisation across all pods, relative to their requests
+          type: Utilization
+          # Scale up when average memory utilisation exceeds 80%
+          averageUtilization: 80
+
+  # ── Scaling behaviour ──────────────────────────────────────────────────────
+  behavior:
+    scaleUp:
+      # Stabilization window: evaluate scale-up after 0s (react immediately)
+      stabilizationWindowSeconds: 0
+      policies:
+        # Allow adding at most 2 pods every 60 seconds during scale-up
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+        # Or allow a 100% increase per minute (whichever adds more pods)
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+      # Use the policy that results in the highest replica count
+      selectPolicy: Max
+
+    scaleDown:
+      # Stabilization window: wait 5 minutes before scaling down
+      # Prevents thrashing when load drops briefly between bursts
+      stabilizationWindowSeconds: 300
+      policies:
+        # Allow removing at most 1 pod every 60 seconds during scale-down
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min

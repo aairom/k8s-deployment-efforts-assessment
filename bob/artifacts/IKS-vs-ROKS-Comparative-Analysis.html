@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IKS vs ROKS — Enterprise Comparative Analysis</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f7f8fa;
+    --surface-2: #eef0f4;
+    --border: #dde1e7;
+    --text: #1f2328;
+    --muted: #57606a;
+    --accent-iks: #1a56db;
+    --accent-roks: #c52020;
+    --accent-shared: #1a7f37;
+    --accent-header: #0f3460;
+    --tag-bg-iks: #dbeafe;
+    --tag-text-iks: #1e40af;
+    --tag-bg-roks: #fee2e2;
+    --tag-text-roks: #991b1b;
+    --tag-bg-shared: #dcfce7;
+    --tag-text-shared: #166534;
+    --check: #1a7f37;
+    --dash: #9ca3af;
+    --radius: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── HEADER ── */
+  .doc-header {
+    border-left: 4px solid var(--accent-header);
+    padding: 1.4rem 1.6rem;
+    background: var(--surface);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin-bottom: 2.4rem;
+  }
+  .doc-header h1 {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: var(--accent-header);
+    line-height: 1.25;
+    margin-bottom: .35rem;
+  }
+  .doc-header p { font-size: .88rem; color: var(--muted); }
+  .meta-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .65rem; }
+  .meta-chip {
+    font-size: .75rem; font-weight: 600; padding: .15rem .55rem;
+    border-radius: 999px; background: var(--surface-2); color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── SECTION HEADINGS ── */
+  h2 {
+    font-size: 1.2rem; font-weight: 700;
+    color: var(--accent-header);
+    padding-bottom: .45rem;
+    border-bottom: 2px solid var(--border);
+    margin: 2.8rem 0 1.2rem;
+  }
+  h2 .section-num {
+    display: inline-block; background: var(--accent-header); color: #fff;
+    font-size: .75rem; font-weight: 700; padding: .12rem .45rem;
+    border-radius: var(--radius); margin-right: .5rem; vertical-align: middle;
+  }
+  h3 {
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    margin: 1.8rem 0 .75rem;
+  }
+  h4 {
+    font-size: .92rem; font-weight: 700; color: var(--muted);
+    margin: 1.2rem 0 .5rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  p { margin-bottom: .85rem; }
+
+  /* ── PLATFORM BADGES ── */
+  .badge {
+    display: inline-block; font-size: .72rem; font-weight: 700;
+    padding: .12rem .45rem; border-radius: 4px;
+    vertical-align: middle; margin-left: .35rem;
+  }
+  .badge-iks { background: var(--tag-bg-iks); color: var(--tag-text-iks); }
+  .badge-roks { background: var(--tag-bg-roks); color: var(--tag-text-roks); }
+  .badge-shared { background: var(--tag-bg-shared); color: var(--tag-text-shared); }
+
+  /* ── PLATFORM CARDS (EXEC SUMMARY) ── */
+  .platform-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0 1.5rem; }
+  .platform-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem 1.3rem;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .platform-card.iks { border-top: 3px solid var(--accent-iks); }
+  .platform-card.roks { border-top: 3px solid var(--accent-roks); }
+  .platform-card h3 { font-size: .95rem; margin: 0 0 .5rem; color: var(--text); }
+  .platform-card .vp {
+    font-size: .82rem; font-style: italic; color: var(--muted);
+    margin-top: .6rem; padding-top: .6rem; border-top: 1px solid var(--border);
+  }
+  .platform-card ul { list-style: none; padding: 0; }
+  .platform-card ul li {
+    font-size: .85rem; padding: .2rem 0;
+    padding-left: 1rem; position: relative; color: var(--text);
+  }
+  .platform-card ul li::before {
+    content: "→"; position: absolute; left: 0; color: var(--muted); font-size: .8rem;
+  }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; margin: 1rem 0 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  thead th {
+    background: var(--accent-header); color: #fff;
+    font-weight: 600; font-size: .8rem;
+    padding: .65rem .9rem; text-align: left;
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: var(--surface); }
+  tbody tr:hover { background: var(--surface-2); }
+  td { padding: .55rem .9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  td:first-child { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .thead-iks { background: #1a4db5 !important; }
+  .thead-roks { background: #991b1b !important; }
+  .check-mark { color: var(--check); font-weight: 700; }
+  .dash-mark { color: var(--dash); }
+
+  /* ── INFO BOXES ── */
+  .info-box {
+    border-radius: var(--radius); padding: 1rem 1.2rem; margin: 1rem 0 1.4rem;
+    font-size: .88rem; border-left: 3px solid;
+  }
+  .info-box.iks { background: #eff6ff; border-color: var(--accent-iks); }
+  .info-box.roks { background: #fef2f2; border-color: var(--accent-roks); }
+  .info-box.shared { background: #f0fdf4; border-color: var(--accent-shared); }
+  .info-box.neutral { background: var(--surface); border-color: var(--accent-header); }
+  .info-box strong { display: block; margin-bottom: .35rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; }
+
+  /* ── TWO-COLUMN DIFF LAYOUT ── */
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0 1.5rem; }
+  .diff-col { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .diff-col-header {
+    padding: .55rem .9rem; font-size: .82rem; font-weight: 700;
+    color: #fff; letter-spacing: .02em;
+  }
+  .diff-col-header.iks { background: var(--accent-iks); }
+  .diff-col-header.roks { background: var(--accent-roks); }
+  .diff-col-body { padding: .8rem 1rem; font-size: .85rem; background: var(--surface); }
+  .diff-col-body ul { list-style: none; padding: 0; }
+  .diff-col-body ul li {
+    padding: .25rem 0 .25rem 1.1rem; position: relative; border-bottom: 1px solid var(--border);
+  }
+  .diff-col-body ul li:last-child { border-bottom: none; }
+  .diff-col-body ul li::before { content: "▸"; position: absolute; left: 0; font-size: .75rem; color: var(--muted); }
+
+  /* ── DECISION GUIDE ── */
+  .decision-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .decision-card { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .decision-card-header { padding: .75rem 1rem; font-size: .88rem; font-weight: 700; color: #fff; }
+  .decision-card-header.iks { background: var(--accent-iks); }
+  .decision-card-header.roks { background: var(--accent-roks); }
+  .decision-card-body { padding: .8rem 1rem; font-size: .85rem; }
+  .decision-card-body ol { padding-left: 1.2rem; margin: 0; }
+  .decision-card-body ol li { padding: .3rem 0; border-bottom: 1px solid var(--border); }
+  .decision-card-body ol li:last-child { border-bottom: none; }
+  .decision-card-body ol li strong { color: var(--text); }
+  .scenario-label {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--muted); display: block; margin-bottom: .1rem;
+  }
+
+  /* ── ARCH DIAGRAM ── */
+  .arch-diagram {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.2rem; margin: 1rem 0 1.5rem;
+    font-size: .82rem;
+  }
+  .layer-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .5rem; }
+  .arch-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+  .arch-node {
+    border-radius: 4px; padding: .3rem .65rem;
+    font-size: .78rem; font-weight: 600; border: 1px solid;
+  }
+  .arch-node.iks-node { background: #dbeafe; color: var(--tag-text-iks); border-color: #93c5fd; }
+  .arch-node.roks-node { background: #fee2e2; color: var(--tag-text-roks); border-color: #fca5a5; }
+  .arch-node.shared-node { background: #f0fdf4; color: var(--tag-text-shared); border-color: #86efac; }
+  .arch-node.infra-node { background: #f5f3ff; color: #4c1d95; border-color: #c4b5fd; }
+  .arch-divider { width: 100%; height: 1px; background: var(--border); margin: .6rem 0; }
+
+  /* ── SCC TABLE ── */
+  .scc-row-restricted { background: #fff7ed !important; }
+  .scc-row-privileged { background: #fef2f2 !important; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.3rem; margin-bottom: 2rem;
+    font-size: .85rem;
+  }
+  .toc h3 { font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; margin: 0 0 .6rem; color: var(--muted); }
+  .toc ol { padding-left: 1.3rem; margin: 0; }
+  .toc ol li { padding: .15rem 0; }
+  .toc a { color: var(--accent-header); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    background: var(--surface-2); border-radius: var(--radius);
+    padding: .8rem 1rem; font-size: .84rem; margin: .8rem 0;
+    color: var(--muted); border-left: 3px solid var(--border);
+  }
+
+  /* ── FOOTER ── */
+  .doc-footer {
+    margin-top: 3rem; padding-top: 1.2rem;
+    border-top: 1px solid var(--border);
+    text-align: center; font-size: .75rem; color: var(--muted);
+  }
+
+  @media (max-width: 700px) {
+    .platform-cards, .diff-grid, .decision-cards { grid-template-columns: 1fr; }
+    .doc-header h1 { font-size: 1.2rem; }
+    td:first-child { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <h1>IBM Cloud Kubernetes Service (IKS) vs. Red Hat OpenShift on IBM Cloud (ROKS)</h1>
+  <p>Comprehensive Enterprise Comparative Analysis — Managed Container Platforms on IBM Cloud</p>
+  <div class="meta-chips">
+    <span class="meta-chip">Technical Architecture Reference</span>
+    <span class="meta-chip">Cloud Architects · Platform Engineers</span>
+    <span class="meta-chip">IKS · ROKS · Satellite · IBM Cloud</span>
+    <span class="meta-chip">2025</span>
+  </div>
+</div>
+
+<nav class="toc">
+  <h3>Table of Contents</h3>
+  <ol>
+    <li><a href="#s1">Executive Summary</a></li>
+    <li><a href="#s2">Architectural Deep-Dive &amp; Control Plane Mechanics</a></li>
+    <li><a href="#s3">Deployment Typologies &amp; Infrastructure Integrations</a></li>
+    <li><a href="#s4">Shared Foundations (Common Points)</a></li>
+    <li><a href="#s5">Key Distinctions &amp; Operational Differences</a></li>
+    <li><a href="#s6">Comprehensive Technical Comparison Matrix</a></li>
+    <li><a href="#s7">Architectural Decision Guide</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════ SECTION 1 ═══════════════════════ -->
+<h2 id="s1"><span class="section-num">1</span> Executive Summary</h2>
+<p>IBM Cloud offers two premier managed container platforms designed to meet the divergent needs of modern enterprise workloads. Both services are underpinned by IBM's proven global cloud infrastructure, benefit from a fully managed control plane, and integrate natively with the broader IBM Cloud service ecosystem. Despite sharing foundational infrastructure, they represent philosophically distinct approaches to container orchestration at enterprise scale.</p>
+
+<div class="platform-cards">
+  <div class="platform-card iks">
+    <h3>IBM Cloud Kubernetes Service (IKS) <span class="badge badge-iks">IKS</span></h3>
+    <ul>
+      <li>CNCF-certified, upstream-aligned Kubernetes</li>
+      <li>Fully managed control plane — no master node ops</li>
+      <li>Ubuntu 20.04/22.04 LTS or RHEL 8 worker OS</li>
+      <li><code>containerd</code> container runtime</li>
+      <li>Pure resource consumption pricing (no platform license)</li>
+      <li>Maximum cross-cloud portability</li>
+      <li>Latest Kubernetes minor releases available</li>
+    </ul>
+    <p class="vp"><strong>Core Value Proposition:</strong> Maximum Kubernetes conformance, lowest TCO for pure container workloads, and broadest compatibility with the CNCF ecosystem toolchain.</p>
+  </div>
+  <div class="platform-card roks">
+    <h3>Red Hat OpenShift on IBM Cloud (ROKS) <span class="badge badge-roks">ROKS</span></h3>
+    <ul>
+      <li>Red Hat OpenShift Container Platform (OCP) 4.x</li>
+      <li>Fully managed control plane with dedicated masters</li>
+      <li>RHCOS (immutable) or RHEL 8 worker OS</li>
+      <li><code>CRI-O</code> container runtime; SELinux enforcing</li>
+      <li>Bundled OCP license in worker node pricing (~25–30% premium)</li>
+      <li>IBM Cloud Paks exclusive deployment target</li>
+      <li>Integrated developer platform: Console, S2I, Pipelines, OLM</li>
+    </ul>
+    <p class="vp"><strong>Core Value Proposition:</strong> Enterprise security defaults, integrated developer platform, seamless IBM Cloud Pak deployment, and consistent hybrid cloud operations.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 2 ═══════════════════════ -->
+<h2 id="s2"><span class="section-num">2</span> Architectural Deep-Dive &amp; Control Plane Mechanics</h2>
+
+<h3>2.1 Control Plane Management</h3>
+<p>Both IKS and ROKS operate under a <strong>fully managed control plane model</strong>. IBM provisions, operates, monitors, and patches the Kubernetes/OpenShift master components (API server, etcd, controller manager, scheduler) on behalf of the customer, eliminating the single largest operational burden in self-managed Kubernetes deployments.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Aspect</th>
+    <th class="thead-iks">IKS</th>
+    <th class="thead-roks">ROKS</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Master ownership</td><td>IBM-managed, dedicated per cluster</td><td>IBM-managed, dedicated per cluster</td></tr>
+    <tr><td>HA replicas</td><td>3 replicas; multi-zone aware (1/zone in MZC)</td><td>3 replicas spread across availability zones</td></tr>
+    <tr><td>etcd</td><td>Fully managed and backed up by IBM</td><td>Fully managed and backed up by IBM</td></tr>
+    <tr><td>Master patch updates</td><td>Automatic by IBM; no customer action required</td><td>Automatic by IBM; no customer action required</td></tr>
+    <tr><td>Customer SSH access</td><td>Disabled (hardened security posture)</td><td>Disabled (hardened security posture)</td></tr>
+    <tr><td>Control plane SLA</td><td>Covered under IBM Cloud SLA</td><td>Covered under IBM Cloud SLA</td></tr>
+    <tr><td>Master isolation (VPC)</td><td>Dedicated per cluster</td><td>Dedicated per cluster; not shared across customers</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>2.2 Worker Node Operating Systems</h3>
+
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks">IKS — Worker Node OS</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>Ubuntu 20.04/22.04 LTS</strong> or <strong>RHEL 8</strong> (flavor-dependent)</li>
+        <li>CIS Benchmark-aligned OS configuration enforced by IBM SREs</li>
+        <li>Node patching via full re-imaging: <code>ibmcloud ks worker update</code></li>
+        <li><strong>containerd</strong> as the container runtime (OCI-compliant)</li>
+        <li>LUKS AES-256 encryption on container filesystem partition (default)</li>
+        <li>SSH access disabled; unique LUKS key per worker node</li>
+        <li>Linux kernel supports containers from any Linux distribution</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks">ROKS — Worker Node OS</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>Red Hat Enterprise Linux CoreOS (RHCOS)</strong> — immutable, container-optimized OS</li>
+        <li>Managed declaratively via <strong>Ignition</strong>; <strong>rpm-ostree</strong> for atomic image-based updates</li>
+        <li>Read-only system partitions; OS state is ephemeral and version-controlled</li>
+        <li><strong>CRI-O</strong> container runtime (mandated by OpenShift)</li>
+        <li><strong>SELinux enforcing mode</strong> — mandatory access control at OS layer</li>
+        <li>MachineConfigOperator (MCO) manages OS configuration as code</li>
+        <li>RHEL 8 also available for certain worker pool configurations</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="info-box roks">
+  <strong>⚠ RHCOS Implication</strong>
+  The immutable nature of RHCOS means no ad-hoc OS modifications; all configuration is declarative via MachineConfig objects. This enforces consistency at scale but requires teams to adjust operational practices away from traditional mutable server management.
+</div>
+
+<h3>2.3 Internal System Components</h3>
+
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks">IKS — System Components</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>Ingress:</strong> IBM NGINX-based Application Load Balancer (ALB); one ALB per zone in MZC</li>
+        <li><strong>Registry:</strong> No built-in registry; IBM Cloud Container Registry (ICR) via pull secrets</li>
+        <li><strong>Auth:</strong> IBM Cloud IAM → Kubernetes RBAC ClusterRole binding sync</li>
+        <li><strong>CNI:</strong> Project Calico for pod networking and NetworkPolicy enforcement</li>
+        <li><strong>Konnectivity:</strong> IBM TLS tunnel agent for master ↔ worker secure comms</li>
+        <li><strong>Admission:</strong> Standard Kubernetes admission chain (PodSecurity, RBAC, webhooks)</li>
+        <li><strong>Operators:</strong> No built-in framework; manual install via kubectl/Helm</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks">ROKS — System Components</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>Router:</strong> HAProxy-based OpenShift Router (Operator-managed); one per zone; handles <code>Route</code> resources</li>
+        <li><strong>Internal Registry:</strong> Built-in OCP registry backed by <em>mandatory</em> IBM COS; supports ImageStreams</li>
+        <li><strong>OAuth Server:</strong> Auto-configured to delegate to IBM Cloud IAM; custom IdP not configurable</li>
+        <li><strong>CNI:</strong> Project Calico (same as IKS)</li>
+        <li><strong>Konnectivity:</strong> Same IBM TLS tunnel agent</li>
+        <li><strong>Admission:</strong> Extended chain: SCC, BuildByStrategy, OriginPodNodeEnvironment, OCP-specific webhooks</li>
+        <li><strong>OLM + OperatorHub:</strong> Pre-installed operator lifecycle management framework</li>
+        <li><strong>Web Console:</strong> Pre-deployed; Developer + Admin perspectives</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h4>Logical Architecture Topology</h4>
+<div class="arch-diagram">
+  <div class="layer-label">IBM-Managed Control Plane (Dedicated per cluster)</div>
+  <div class="arch-row">
+    <div class="arch-node shared-node">Kubernetes API Server</div>
+    <div class="arch-node shared-node">etcd (encrypted, backed up)</div>
+    <div class="arch-node shared-node">Controller Manager</div>
+    <div class="arch-node shared-node">Scheduler</div>
+    <div class="arch-node roks-node">OCP OAuth Server [ROKS]</div>
+    <div class="arch-node roks-node">OCP Admission Controllers [ROKS]</div>
+  </div>
+  <div class="arch-divider"></div>
+  <div class="layer-label">Customer-Managed Worker Nodes</div>
+  <div class="arch-row">
+    <div class="arch-node shared-node">kubelet</div>
+    <div class="arch-node iks-node">containerd [IKS]</div>
+    <div class="arch-node roks-node">CRI-O [ROKS]</div>
+    <div class="arch-node shared-node">Calico CNI</div>
+    <div class="arch-node shared-node">Konnectivity Agent</div>
+    <div class="arch-node roks-node">MachineConfigAgent [ROKS]</div>
+  </div>
+  <div class="arch-divider"></div>
+  <div class="layer-label">Platform Services Layer</div>
+  <div class="arch-row">
+    <div class="arch-node iks-node">NGINX ALB [IKS]</div>
+    <div class="arch-node roks-node">HAProxy Router [ROKS]</div>
+    <div class="arch-node roks-node">Internal Registry + COS [ROKS]</div>
+    <div class="arch-node roks-node">OLM + OperatorHub [ROKS]</div>
+    <div class="arch-node roks-node">OpenShift Pipelines [ROKS]</div>
+    <div class="arch-node roks-node">Web Console [ROKS]</div>
+  </div>
+  <div class="arch-divider"></div>
+  <div class="layer-label">IBM Cloud Infrastructure (Classic / VPC / Satellite)</div>
+  <div class="arch-row">
+    <div class="arch-node infra-node">IBM Cloud IAM</div>
+    <div class="arch-node infra-node">Key Protect / HPCS</div>
+    <div class="arch-node infra-node">IBM Cloud Container Registry</div>
+    <div class="arch-node infra-node">VPC Security Groups</div>
+    <div class="arch-node infra-node">IBM COS</div>
+    <div class="arch-node infra-node">Activity Tracker / Log Analysis</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 3 ═══════════════════════ -->
+<h2 id="s3"><span class="section-num">3</span> Deployment Typologies &amp; Infrastructure Integrations</h2>
+
+<h3>3.1 Classic vs. VPC Infrastructure</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Attribute</th>
+    <th>Classic Infrastructure</th>
+    <th>VPC Infrastructure (Recommended)</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Worker node networking</td><td>VLAN-based; VRF or VLAN spanning required for MZC</td><td>VPC subnet-based; security groups govern all traffic</td></tr>
+    <tr><td>Worker node visibility</td><td>Visible in IBM Cloud infrastructure portal; separate bill</td><td>Not visible in VPC dashboard; billed via IKS/ROKS service</td></tr>
+    <tr><td>Load balancer</td><td>Multi-Zone Load Balancer (MZLB) auto-provisioned for MZC</td><td>VPC Load Balancers; multi-zone aware; billed via VPC pricing</td></tr>
+    <tr><td>Secure-by-default networking</td><td>Not applicable</td><td>IKS 1.30+ / ROKS 4.15+: 4 auto-created security groups; public egress blocked by default</td></tr>
+    <tr><td>IBM service connectivity</td><td>CSE (Cloud Service Endpoints) over private backbone</td><td>VPEs auto-created for ICR, COS, VPC API, cluster master</td></tr>
+    <tr><td>Private-only cluster (IKS)</td><td>✅ Supported (no public VLAN on workers)</td><td>Supported via private service endpoint configuration</td></tr>
+    <tr><td>1/3-year reservations (IKS)</td><td>✅ Available (30–50% savings)</td><td>Sustained usage discounts available</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3.2 Single-Zone vs. Multi-Zone Cluster Topologies</h3>
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks" style="background:#374151;">Single-Zone Cluster (SZC)</div>
+    <div class="diff-col-body">
+      <ul>
+        <li>All worker nodes and master replicas in a single AZ</li>
+        <li>Master still has 3 replicas for process-level HA within the zone</li>
+        <li>AZ failure causes full cluster unavailability</li>
+        <li>Suitable for dev, test, CI, and non-critical workloads</li>
+        <li>Lower cost; single zone networking and billing</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks" style="background:#1a7f37;">Multi-Zone Cluster (MZC) — Production Standard</div>
+    <div class="diff-col-body">
+      <ul>
+        <li>Worker nodes distributed across 2–3 AZs in an MZR</li>
+        <li>Master replicas: one per zone (3 total)</li>
+        <li>IKS: NGINX ALBs one per zone; MZC LB auto-provisioned</li>
+        <li>ROKS: Router services one per zone; VPC LBs front routers</li>
+        <li>Internal registry COS bucket: regional resource, 11-nines durability</li>
+        <li>IKS: ≥1 node/zone; ROKS: ≥2 nodes/zone (4 vCPUs each)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>3.3 Hybrid and Multi-Cloud: IBM Cloud Satellite</h3>
+<p>Both IKS and ROKS extend to customer-managed infrastructure via <strong>IBM Cloud Satellite</strong>, enabling IBM-managed control planes on hardware in customer data centers, co-location facilities, edge locations, or third-party clouds (AWS, Azure, GCP).</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>Aspect</th>
+    <th class="thead-iks">IKS on Satellite</th>
+    <th class="thead-roks">ROKS on Satellite</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Primary use case</td><td>Standard K8s at edge or in-DC; data residency</td><td>Hybrid OpenShift standardization; Cloud Pak at edge/on-prem</td></tr>
+    <tr><td>Control plane</td><td>IBM-managed; remote to customer location</td><td>IBM-managed; remote to customer location</td></tr>
+    <tr><td>Worker infrastructure</td><td>Customer-owned hardware; customer manages host OS</td><td>Customer-owned hardware; customer manages host OS</td></tr>
+    <tr><td>IBM Cloud Paks</td><td>Not supported</td><td>Fully supported; Cloud Pak operators deployable</td></tr>
+    <tr><td>BYOL OCP license</td><td>N/A</td><td>Supported; bring existing Red Hat subscription</td></tr>
+    <tr><td>Post-Nov 2022 billing</td><td>Flat monthly cluster fee + per-vCPU worker fee</td><td>Flat monthly cluster fee + per-vCPU worker fee + per-vCPU OCP license</td></tr>
+    <tr><td>Platform consistency</td><td>K8s-standard (per IKS version track)</td><td>Consistent OCP experience across cloud, on-prem, edge</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 4 ═══════════════════════ -->
+<h2 id="s4"><span class="section-num">4</span> Shared Foundations (Common Points)</h2>
+
+<h3>4.1 IBM Cloud Service Integration</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>IBM Cloud Service</th>
+    <th class="thead-iks">IKS Integration</th>
+    <th class="thead-roks">ROKS Integration</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>IBM Cloud IAM</td><td>IAM service roles → K8s RBAC sync (Manager/Writer/Reader)</td><td>IAM → OAuth Server → K8s RBAC sync</td></tr>
+    <tr><td>Key Protect</td><td>KMS provider for Kubernetes secret encryption (etcd-at-rest)</td><td>KMS provider for etcd secret encryption</td></tr>
+    <tr><td>Hyper Protect Crypto Services</td><td>FIPS 140-2 Level 4 HSM-backed secret encryption</td><td>Route TLS termination with HPCS; HSM-backed secret encryption</td></tr>
+    <tr><td>IBM Cloud Activity Tracker</td><td>Kubernetes audit log streaming</td><td>OpenShift API audit log streaming</td></tr>
+    <tr><td>IBM Log Analysis (Cloud Logs)</td><td>Worker node + app log forwarding via Fluentd/agent</td><td>Worker node + app log forwarding; OpenShift Logging operator</td></tr>
+    <tr><td>IBM Cloud Monitoring</td><td>Prometheus metrics via IBM Cloud Monitoring agent</td><td>OpenShift Monitoring stack (Prometheus + Grafana built-in); user workload monitoring</td></tr>
+    <tr><td>IBM Cloud Container Registry</td><td>Primary image registry; Vulnerability Advisor; image signing</td><td>ICR + internal registry; ImageStreams proxy to ICR</td></tr>
+    <tr><td>IBM Cloud Continuous Delivery</td><td>Tekton pipelines; DevOps Toolchains; Code Risk Analyzer</td><td>Tekton toolchains + native OpenShift Pipelines operator</td></tr>
+    <tr><td>Context-Based Restrictions (CBR)</td><td>Network zone-scoped API access control</td><td>Network zone-scoped API access control</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4.2 Common Storage Layers</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Storage Type</th><th>Description</th><th>Access Mode</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>IBM Cloud Block Storage</td><td>CSI drivers; persistent volumes for stateful workloads</td><td>RWO</td><td>Key Protect/HPCS encryption supported</td></tr>
+    <tr><td>IBM Cloud File Storage</td><td>NFS-backed; ReadWriteMany for shared workloads</td><td>RWX</td><td>Suitable for CMS, ML training data</td></tr>
+    <tr><td>IBM Cloud Object Storage (COS)</td><td>S3-compatible; IBM COS CSI driver</td><td>Object (S3)</td><td>ROKS also requires COS for internal registry</td></tr>
+    <tr><td>Portworx Enterprise</td><td>Software-defined storage; multi-zone replication; encryption</td><td>RWO / RWX</td><td>Available on both platforms via operator/DaemonSet</td></tr>
+    <tr><td>OpenShift Data Foundation (ODF)</td><td>Red Hat Ceph-based; block, file, object within cluster</td><td>RWO / RWX / Object</td><td>ROKS only — certified operator via OperatorHub</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4.3 Network Isolation Primitives</h3>
+<div class="info-box shared">
+  <strong>Shared Network Architecture</strong>
+  Both IKS and ROKS use <strong>Project Calico</strong> as the CNI plugin. Kubernetes <code>NetworkPolicy</code> objects provide L3/L4 micro-segmentation. Both platforms support <strong>private-only cloud service endpoints</strong> routing API server communication over the IBM Cloud private backbone. VPC clusters additionally enforce security groups at the NIC, load balancer, and VPE gateway layers for defense-in-depth isolation.
+</div>
+
+<!-- ═══════════════════════ SECTION 5 ═══════════════════════ -->
+<h2 id="s5"><span class="section-num">5</span> Key Distinctions &amp; Operational Differences</h2>
+
+<h3>5.1 Developer &amp; Operator Experience</h3>
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks">IKS — Kubernetes-Native Toolchain</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>CLI:</strong> <code>kubectl</code> + <code>ibmcloud ks</code> plugin for cluster lifecycle</li>
+        <li><strong>UI:</strong> IBM Cloud Console (infra mgmt); K8s Dashboard deployable manually</li>
+        <li><strong>Package Management:</strong> Helm 3 — de facto standard for complex app deployments</li>
+        <li><strong>Operators:</strong> Manual install via <code>kubectl apply</code> or Helm; no built-in framework</li>
+        <li><strong>CI/CD:</strong> IBM Cloud Continuous Delivery, GitHub Actions, Jenkins, ArgoCD, Flux</li>
+        <li><strong>Registry:</strong> IBM Cloud Container Registry; pull secrets managed manually</li>
+        <li><strong>Self-service:</strong> No built-in developer portal; relies on external tooling</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks">ROKS — Integrated Developer Platform</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>CLI:</strong> <code>oc</code> (kubectl superset) + <code>kubectl</code> + <code>ibmcloud oc</code> plugin</li>
+        <li><strong>UI:</strong> OpenShift Web Console — pre-installed; Developer perspective (topology, S2I, pipelines) + Admin perspective</li>
+        <li><strong>OLM + OperatorHub:</strong> Pre-installed; hundreds of certified/community operators</li>
+        <li><strong>CI/CD:</strong> OpenShift Pipelines (Tekton) — pre-installed; visual management in Web Console</li>
+        <li><strong>Build System:</strong> BuildConfig, S2I, ImageStream triggers — fully built-in</li>
+        <li><strong>Registry:</strong> Internal registry (ImageStreams) + ICR; automated promotion workflows</li>
+        <li><strong>Self-service:</strong> Developer Perspective: guided app deployment from Git or image without Dockerfile</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>5.2 Security Posture &amp; Isolation</h3>
+<h4>IKS — Kubernetes Pod Security Standards (PSS)</h4>
+<p>IKS enforces security via the upstream Kubernetes model. Pod Security Admission (PSA) at the namespace level enforces <code>privileged</code>, <code>baseline</code>, or <code>restricted</code> modes. The <code>restricted</code> profile mandates non-root execution, read-only root filesystems, and Linux capability dropping. Calico NetworkPolicy provides L3/L4 segmentation (not enforced by default — explicit policies required).</p>
+
+<h4>ROKS — Security Context Constraints (SCC) — Stricter by Default</h4>
+<p>ROKS enforces a more opinionated security posture through OpenShift's <strong>Security Context Constraints</strong> framework, active via the <code>SecurityContextConstraint</code> admission controller in the master admission chain. SCCs control UID/GID ranges, permitted volume types, host network/PID/IPC access, Linux capabilities, and AppArmor/SELinux profiles.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr>
+    <th>SCC Name</th><th>Default Assignment</th><th>Key Restrictions</th><th>Typical Use Case</th>
+  </tr></thead>
+  <tbody>
+    <tr class="scc-row-restricted"><td><code>restricted</code></td><td>All authenticated users (default)</td><td>No root, no privilege escalation, limited volumes, drops all capabilities</td><td>Standard application workloads</td></tr>
+    <tr><td><code>nonroot</code></td><td>Explicit grant required</td><td>Any non-root UID; no privilege escalation</td><td>Apps requiring specific non-root UID</td></tr>
+    <tr><td><code>anyuid</code></td><td>Explicit grant required</td><td>Any UID including root</td><td>Legacy apps requiring root UID</td></tr>
+    <tr><td><code>hostnetwork</code></td><td>Explicit grant required</td><td>Access to host network namespace</td><td>Network monitoring agents</td></tr>
+    <tr><td><code>node-exporter</code></td><td>Prometheus node-exporter SA</td><td>Host path access for metrics</td><td>Prometheus node metrics scraping</td></tr>
+    <tr><td><code>hostaccess</code></td><td>Explicit grant required</td><td>Host filesystem and network access</td><td>Infrastructure-level system pods</td></tr>
+    <tr class="scc-row-privileged"><td><code>privileged</code></td><td>Cluster admins / system pods only</td><td>Full host access; no restrictions</td><td>IBM-managed infrastructure components only</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="info-box roks">
+  <strong>⚠ SCC Migration Implication</strong>
+  Container images that run as root (UID 0) or use arbitrary UIDs are rejected by the default <code>restricted</code> SCC. A pre-migration SCC compatibility assessment is strongly recommended. RHCOS enforces <strong>SELinux in enforcing mode</strong> on all worker nodes — an additional mandatory access control boundary not present on Ubuntu-based IKS workers.
+</div>
+
+<h3>5.3 Build &amp; CI/CD Pipelines</h3>
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks">IKS — Composable CI/CD</div>
+    <div class="diff-col-body">
+      <ul>
+        <li>No built-in build or CI/CD system</li>
+        <li><strong>IBM Cloud Continuous Delivery:</strong> Managed Tekton Toolchains; Code Risk Analyzer; Secrets Manager integration</li>
+        <li><strong>ArgoCD / Flux:</strong> GitOps operators for declarative deployment reconciliation (deployed via Helm)</li>
+        <li><strong>GitHub Actions / GitLab CI / Jenkins:</strong> External CI via <code>kubectl</code> + Helm + ICR</li>
+        <li><strong>Tekton Pipelines:</strong> Deployable as standalone operator; no pre-installed Console UI</li>
+        <li>Full flexibility to assemble any CNCF-conformant toolchain</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks">ROKS — Integrated Build &amp; Pipeline Platform</div>
+    <div class="diff-col-body">
+      <ul>
+        <li><strong>OpenShift Builds:</strong> <code>BuildConfig</code> resources; build pods triggered by Git commits, image changes, or webhooks</li>
+        <li><strong>Source-to-Image (S2I):</strong> Push source code → runnable OCI image; no Dockerfile required; enforces security-hardened base images</li>
+        <li><strong>OpenShift Pipelines (Tekton):</strong> Pre-installed operator; <code>Pipeline</code>/<code>Task</code>/<code>PipelineRun</code> CRDs; visual management in Web Console</li>
+        <li><strong>ImageStreams:</strong> Automated redeploy/rebuild on upstream image CVE patches</li>
+        <li><strong>IBM Cloud Paks:</strong> Require OCP; deploy via OperatorHub exclusively on ROKS</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>5.4 Licensing, Support &amp; Cost Model</h3>
+<div class="diff-grid">
+  <div class="diff-col">
+    <div class="diff-col-header iks">IKS — Pure Resource Consumption</div>
+    <div class="diff-col-body">
+      <ul>
+        <li>Worker node cost = infrastructure only (vCPU + RAM + storage)</li>
+        <li>No platform license fee embedded</li>
+        <li>Master management included at no additional charge</li>
+        <li>Classic: 1-year / 3-year reservations → 30–50% savings vs. on-demand</li>
+        <li>Lowest entry cost in IBM Cloud container portfolio</li>
+        <li>VPC regional pricing uplifts + sustained usage discounts apply</li>
+      </ul>
+    </div>
+  </div>
+  <div class="diff-col">
+    <div class="diff-col-header roks">ROKS — Compute + Bundled OCP License</div>
+    <div class="diff-col-body">
+      <ul>
+        <li>Worker node cost = infrastructure + OCP license fee</li>
+        <li><strong>New OCP license:</strong> 1 license per 2 vCores (or 1 physical core); billed hourly</li>
+        <li><strong>Legacy OCP license:</strong> 1 license per 4 vCores; billed monthly per deployed worker</li>
+        <li>OCP license shown as sub-item or separate plan on IBM Cloud invoice</li>
+        <li><strong>BYOL:</strong> IBM Cloud Pak entitlement or Red Hat OCP subscription eliminates license surcharge</li>
+        <li>Net effective premium vs. IKS: <strong>~25–30%</strong> on equivalent worker flavor</li>
+        <li>Satellite ROKS: flat monthly cluster fee + per-vCPU worker + per-vCPU OCP license</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SECTION 6 ═══════════════════════ -->
+<h2 id="s6"><span class="section-num">6</span> Comprehensive Technical Comparison Matrix</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th style="width:22%">Feature / Attribute</th>
+      <th class="thead-iks" style="width:39%">IBM Cloud Kubernetes Service (IKS)</th>
+      <th class="thead-roks" style="width:39%">Red Hat OpenShift on IBM Cloud (ROKS)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Upstream Distribution</td><td>CNCF-certified community Kubernetes (latest upstream)</td><td>Red Hat OpenShift Container Platform (OCP) 4.x</td></tr>
+    <tr><td>K8s Version Currency</td><td>Latest Kubernetes minor release available</td><td>OCP version cadence (may trail upstream K8s 1–2 minor versions)</td></tr>
+    <tr><td>Control Plane Management</td><td>Fully managed by IBM; dedicated per cluster</td><td>Fully managed by IBM; dedicated per cluster</td></tr>
+    <tr><td>Master HA Config</td><td>3 replicas; multi-zone aware</td><td>3 replicas spread across availability zones</td></tr>
+    <tr><td>Worker Node OS</td><td>Ubuntu 20.04/22.04 LTS or RHEL 8</td><td>RHCOS (immutable); RHEL 8 also available</td></tr>
+    <tr><td>Container Runtime</td><td><code>containerd</code></td><td><code>CRI-O</code></td></tr>
+    <tr><td>SELinux</td><td>Not enforced (Ubuntu kernel)</td><td>Enforcing mode on RHCOS worker nodes</td></tr>
+    <tr><td>Default Registry</td><td>IBM Cloud Container Registry (external)</td><td>OpenShift Internal Registry (IBM COS-backed) + ICR</td></tr>
+    <tr><td>COS Dependency</td><td>Optional</td><td>Mandatory (for internal image registry)</td></tr>
+    <tr><td>Image Abstraction</td><td>Standard OCI image references</td><td>ImageStreams + ImageStreamTags (+ OCI refs)</td></tr>
+    <tr><td>Authentication / IdP</td><td>IBM Cloud IAM → K8s RBAC sync</td><td>IAM → OCP OAuth Server → K8s RBAC sync</td></tr>
+    <tr><td>Multi-tenancy Model</td><td>Namespaces + RBAC + NetworkPolicy</td><td>Projects + RBAC + SCC + NetworkPolicy</td></tr>
+    <tr><td>Security Defaults</td><td>Pod Security Admission (Baseline/Restricted PSS)</td><td>SCC Restricted + SELinux enforcing — stricter by default</td></tr>
+    <tr><td>Admission Controllers</td><td>Standard Kubernetes admission chain</td><td>Extended: SCC, BuildByStrategy, OCP-specific webhooks</td></tr>
+    <tr><td>CLI Tools</td><td><code>kubectl</code> + <code>ibmcloud ks</code></td><td><code>oc</code> (kubectl superset) + <code>kubectl</code> + <code>ibmcloud oc</code></td></tr>
+    <tr><td>Web Console / UI</td><td>IBM Cloud Console (infra); K8s Dashboard (manual deploy)</td><td>OpenShift Web Console (Developer + Admin) — pre-installed</td></tr>
+    <tr><td>Ingress Controller</td><td>IBM NGINX-based ALB (<code>Ingress</code> resources)</td><td>HAProxy OpenShift Router (<code>Route</code> + <code>Ingress</code>)</td></tr>
+    <tr><td>Operator Framework</td><td>Manual deployment (kubectl/Helm)</td><td>OLM + OperatorHub — pre-installed</td></tr>
+    <tr><td>Build System</td><td>No built-in; external CI/CD required</td><td>OpenShift Builds + S2I — built-in</td></tr>
+    <tr><td>CI/CD Pipelines</td><td>External tools; IBM CD Toolchains; Tekton (manual)</td><td>OpenShift Pipelines (Tekton) — pre-installed operator</td></tr>
+    <tr><td>Service Mesh</td><td>Manual Istio/Linkerd deployment</td><td>OpenShift Service Mesh (Istio-based) via OperatorHub</td></tr>
+    <tr><td>Monitoring Stack</td><td>IBM Cloud Monitoring agent; manual Prometheus/Grafana</td><td>OpenShift Monitoring (Prometheus + Grafana) — built-in</td></tr>
+    <tr><td>Logging</td><td>IBM Log Analysis agent; Fluentd DaemonSet</td><td>IBM Log Analysis agent; OpenShift Logging (EFK/Loki) via Operator</td></tr>
+    <tr><td>OS Lifecycle Management</td><td>IBM-managed; node reimaging via <code>ibmcloud ks worker update</code></td><td>IBM-managed; RHCOS atomic updates via MachineConfigOperator</td></tr>
+    <tr><td>IBM Cloud Paks</td><td>Not supported (requires OCP)</td><td>Fully supported; Cloud Pak operators via OperatorHub</td></tr>
+    <tr><td>OpenShift Virtualization</td><td>Not available</td><td>KubeVirt-based; available as operator (ROKS 4.x)</td></tr>
+    <tr><td>Minimum Worker Nodes</td><td>1 worker node per zone</td><td>2 worker nodes per zone (4 vCPUs each minimum)</td></tr>
+    <tr><td>Infrastructure Options</td><td>Classic, VPC, Satellite</td><td>Classic, VPC, Satellite</td></tr>
+    <tr><td>Private-Only (Classic)</td><td class="check-mark">✅ Supported</td><td class="dash-mark">Not supported on Classic</td></tr>
+    <tr><td>Pricing Model</td><td>Pure compute cost; no platform license</td><td>Compute + bundled OCP license (~25–30% premium vs. IKS)</td></tr>
+    <tr><td>BYOL / Entitlement</td><td class="dash-mark">N/A</td><td>IBM Cloud Pak entitlement or Red Hat subscription accepted</td></tr>
+    <tr><td>Satellite Extension</td><td>IKS clusters on customer-managed hosts</td><td>ROKS clusters + Cloud Paks on customer-managed hosts</td></tr>
+    <tr><td>CNCF Conformance</td><td>Certified CNCF-conformant Kubernetes</td><td>OCP is CNCF-conformant (+ additional Red Hat APIs)</td></tr>
+    <tr><td>Cross-Cloud Portability</td><td>High (upstream K8s APIs only)</td><td>Medium (OpenShift-specific APIs require adaptation off-platform)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════ SECTION 7 ═══════════════════════ -->
+<h2 id="s7"><span class="section-num">7</span> Architectural Decision Guide</h2>
+
+<div class="callout">
+  Use the following scenario-based framework to guide platform selection. Both platforms are production-grade; the decision should be driven by organizational context, existing ecosystem investments, workload security requirements, and total cost of ownership analysis.
+</div>
+
+<div class="decision-cards">
+  <div class="decision-card">
+    <div class="decision-card-header iks">Choose IBM Cloud Kubernetes Service (IKS) when…</div>
+    <div class="decision-card-body">
+      <ol>
+        <li>
+          <span class="scenario-label">Scenario 1 — Cost Optimization</span>
+          <strong>Budget is the primary constraint and no existing Red Hat license.</strong> The ~25–30% OCP license premium is not offset by platform capability requirements. Teams are comfortable assembling their own toolchain (Helm, ArgoCD, Prometheus, external registries).
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 2 — Upstream K8s Conformance</span>
+          <strong>Policy mandates latest upstream Kubernetes minor releases.</strong> IKS tracks the upstream K8s release cadence more closely than ROKS, which follows the OCP schedule (typically lagging 1–2 minor versions).
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 3 — Multi-Cloud Portability</span>
+          <strong>Workloads must be portable to GKE, EKS, or AKS with minimal refactoring.</strong> IKS workloads using only upstream K8s APIs are directly portable; ROKS workloads using <code>Route</code>, SCC, <code>BuildConfig</code>, or <code>ImageStream</code> require adaptation.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 4 — Composable Operator Model</span>
+          <strong>Team prefers manual operator ecosystem composition</strong> with existing Helm chart investments that may conflict with OLM or require custom SCC grants.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 5 — Private-Only Classic Cluster</span>
+          <strong>Compliance mandates zero public internet exposure</strong> including no public worker node networking on Classic infrastructure. IKS supports this; ROKS does not.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 6 — Minimal Footprint</span>
+          <strong>Lightweight edge, CI runner, or dev/test environments.</strong> IKS supports 1 worker/zone; ROKS requires ≥2 workers/zone at 4 vCPUs each.
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="decision-card">
+    <div class="decision-card-header roks">Choose Red Hat OpenShift on IBM Cloud (ROKS) when…</div>
+    <div class="decision-card-body">
+      <ol>
+        <li>
+          <span class="scenario-label">Scenario 1 — Existing OpenShift Ecosystem</span>
+          <strong>Organization operates OCP on-premises or on other clouds.</strong> ROKS delivers operational consistency: same <code>oc</code> CLI, same SCCs, same OperatorHub, same OCP API surface. Platform engineers' skills and runbooks transfer directly.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 2 — IBM Cloud Paks Required</span>
+          <strong>Any IBM Cloud Pak is part of the solution.</strong> Cloud Pak for Data, Integration, AIOps, Business Automation, and Security require OpenShift and deploy only on ROKS (or self-managed OCP).
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 3 — Enterprise Security &amp; Compliance</span>
+          <strong>Regulated industry (FSI, Healthcare, Government) requiring FIPS-validated OS, SELinux, and SCC-based pod admission hardening.</strong> RHCOS + SCC + OLM provides this posture out of the box.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 4 — Application Modernization</span>
+          <strong>Teams need guided tooling for containerizing legacy applications.</strong> S2I, BuildConfig triggers, ImageStream promotion, and the Developer Perspective dramatically reduce time-to-production.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 5 — Integrated Developer Platform</span>
+          <strong>Single platform covering orchestration + registry + CI/CD + catalog + portal + monitoring.</strong> ROKS delivers all without additional component installation.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 6 — Hybrid Standardization via Satellite</span>
+          <strong>Multi-environment deployments (IBM Cloud + on-prem + edge).</strong> ROKS on Satellite provides a consistent OCP control plane and tooling across all environments from a single IBM Cloud management plane.
+        </li>
+        <li>
+          <span class="scenario-label">Scenario 7 — BYOL License Optimization</span>
+          <strong>Existing Red Hat OCP subscription or IBM Cloud Pak entitlement.</strong> Applying the entitlement eliminates the OCP license surcharge, making per-node cost comparable to IKS while retaining all OpenShift capabilities.
+        </li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<h3>Decision Summary Matrix</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Decision Factor</th>
+      <th class="thead-iks">Favors IKS</th>
+      <th class="thead-roks">Favors ROKS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Cost sensitivity (no existing RH license)</td><td class="check-mark">✅ Yes</td><td class="dash-mark">—</td></tr>
+    <tr><td>IBM Cloud Paks required</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>Existing OpenShift on-premises</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>BYOL Red Hat / Cloud Pak license</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes (license cost offset)</td></tr>
+    <tr><td>Vanilla Kubernetes conformance</td><td class="check-mark">✅ Yes</td><td class="dash-mark">—</td></tr>
+    <tr><td>Latest Kubernetes version required</td><td class="check-mark">✅ Yes</td><td class="dash-mark">—</td></tr>
+    <tr><td>Integrated CI/CD &amp; build system</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>Developer self-service portal</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>SELinux + SCC security hardening</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>FSI / Healthcare / Government compliance</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>Private-only Classic cluster</td><td class="check-mark">✅ Yes</td><td class="dash-mark">—</td></tr>
+    <tr><td>Minimum node footprint (1 node)</td><td class="check-mark">✅ Yes</td><td class="dash-mark">—</td></tr>
+    <tr><td>OperatorHub / OLM ecosystem</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>Cross-cloud portability</td><td class="check-mark">✅ High</td><td class="dash-mark">Medium (OCP-specific APIs)</td></tr>
+    <tr><td>S2I / Application Modernization tooling</td><td class="dash-mark">—</td><td class="check-mark">✅ Yes</td></tr>
+    <tr><td>Hybrid consistency via Satellite</td><td class="check-mark">✅ K8s-standard</td><td class="check-mark">✅ OCP-standard</td></tr>
+    <tr><td>VM workloads alongside containers</td><td class="dash-mark">—</td><td class="check-mark">✅ OpenShift Virtualization (KubeVirt)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="info-box neutral">
+  <strong>📌 Reference Documentation</strong>
+  This analysis is grounded in IBM Cloud official product documentation. For the latest version-specific information, consult:
+  IBM Cloud Kubernetes Service: <a href="https://cloud.ibm.com/docs/containers">cloud.ibm.com/docs/containers</a> &nbsp;·&nbsp;
+  Red Hat OpenShift on IBM Cloud: <a href="https://cloud.ibm.com/docs/openshift">cloud.ibm.com/docs/openshift</a>
+</div>
+
+<footer class="doc-footer">
+  <p>IBM Cloud Container Platform Comparative Analysis · Technical Architecture Reference · 2025</p>
+  <p style="margin-top:.3rem;">Made with IBM Bob</p>
+</footer>
+
+</body>
+</html>

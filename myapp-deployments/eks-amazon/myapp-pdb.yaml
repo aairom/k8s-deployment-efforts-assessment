@@ -1,0 +1,37 @@
+# =============================================================================
+# PodDisruptionBudget — myapp-pdb
+# =============================================================================
+# Guarantees that at least 1 MyApp pod remains available during voluntary
+# disruptions such as:
+#   - Node drains during cluster upgrades (eks node upgrade / Managed Node Group update)
+#   - Infrastructure maintenance (instance type change, AMI rollout)
+#   - Manual kubectl drain operations
+#
+# The PDB does NOT protect against involuntary disruptions (hardware failure,
+# node OOM, etc.). For those, rely on replica count and multi-AZ placement.
+#
+# With 2 replicas and minAvailable: 1, a rolling node drain can proceed
+# without breaching the budget (1 pod remains up while the other is evicted).
+# =============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapp-pdb
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: disruption-budget
+    version: v1
+spec:
+  # ── Availability guarantee ─────────────────────────────────────────────────
+  # At least 1 pod must remain available during any voluntary disruption.
+  # Alternative: use maxUnavailable: 1 to express the same constraint inversely.
+  minAvailable: 1
+
+  # ── Pod selector ───────────────────────────────────────────────────────────
+  # Must match the pod labels defined in the Deployment template
+  selector:
+    matchLabels:
+      app: myapp
+      version: v1

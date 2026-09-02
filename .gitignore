@@ -1,0 +1,101 @@
+# =============================================================================
+# .gitignore — generated from AGENTS.md rules
+# =============================================================================
+
+# -------------------------------------
+# Environment / Secrets
+# -------------------------------------
+.env
+.env.*
+!.env.example
+# Kubernetes secret management — local working files (never commit)
+# Plain K8s Secret YAML generated from .env before sealing with kubeseal
+*-secret-plain.yaml
+
+# HashiCorp Vault token files
+.vault-token
+vault-token
+
+# kubeseal certificate cache (fetched from cluster)
+pub-cert.pem
+
+
+# -------------------------------------
+# Folders starting with underscore (_)
+# e.g. _sources/, _images/, _docs/
+# -------------------------------------
+_*/
+
+# -------------------------------------
+# Input folder — keep folder, ignore content
+# -------------------------------------
+input/*
+!input/.gitkeep
+
+# -------------------------------------
+# Output folder — keep folder, ignore content
+# -------------------------------------
+output/*
+!output/.gitkeep
+
+# -------------------------------------
+# Node / JavaScript
+# -------------------------------------
+node_modules/
+
+# -------------------------------------
+# Playwright MCP
+# -------------------------------------
+.playwright-mcp/
+
+# -------------------------------------
+# Binary / model / archive files
+# -------------------------------------
+*.onnx
+*.onnx.data
+*.so
+*.tgz
+*.tar.gz
+*.zip
+*.dylib
+
+# -------------------------------------
+# Python
+# -------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# -------------------------------------
+# macOS
+# -------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# -------------------------------------
+# IDE / Editor
+# -------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# -------------------------------------
+# Docker / Podman
+# -------------------------------------
+*.pid
+
+
+AGENTS.md
+./bob/mcp.json
+/bob/artifacts/IKS-vs-ROKS-Analyse-Comparative.pptx

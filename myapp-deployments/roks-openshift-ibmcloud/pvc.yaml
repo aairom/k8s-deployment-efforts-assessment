@@ -1,0 +1,39 @@
+# =============================================================================
+# PERSISTENT VOLUME CLAIM — ROKS (Red Hat OpenShift on IBM Cloud)
+# Platform: ROKS — OpenShift 4.x on IBM Cloud VPC
+# Apply with: oc apply -f pvc.yaml
+#
+# Storage options on ROKS:
+#   ibmc-vpc-block-10iops-tier  — IBM Cloud VPC Block Storage (RWO, SSD)
+#   ibmc-file-gold              — IBM Cloud File Storage (RWX, NFS-backed)
+#   ocs-storagecluster-ceph-rbd — OpenShift Data Foundation (ODF) block (RWO)
+#   ocs-storagecluster-cephfs   — OpenShift Data Foundation (ODF) file (RWX)
+#
+# OpenShift Data Foundation (ODF) is the preferred storage solution on ROKS
+# for workloads needing RWX (shared) volumes or a unified block/file/object
+# interface within the cluster. Install ODF from the OperatorHub.
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myapp-data-pvc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: storage
+  annotations:
+    # IBM VPC block storage zone placement
+    ibm.io/zone: "us-south-1"
+    volume.beta.kubernetes.io/storage-provisioner: "vpc.block.csi.ibm.io"
+spec:
+  accessModes:
+    - ReadWriteOnce  # VPC Block Storage is RWO only
+    # For shared (RWX) use ocs-storagecluster-cephfs with ReadWriteMany:
+    # - ReadWriteMany
+  # Using IBM Cloud VPC Block Storage (high-performance tier)
+  storageClassName: ibmc-vpc-block-10iops-tier
+  # Alternative: OpenShift Data Foundation block storage
+  # storageClassName: ocs-storagecluster-ceph-rbd
+  resources:
+    requests:
+      storage: 20Gi

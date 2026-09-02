@@ -1,0 +1,103 @@
+# =============================================================================
+# NetworkPolicy — myapp-netpol
+# =============================================================================
+# Implements a least-privilege network model for MyApp pods.
+#
+# Default stance: deny all ingress and egress, then selectively allow.
+#
+# Allowed ingress:
+#   1. Traffic on port 8080 from pods in the same namespace (internal consumers)
+#   2. Traffic on port 8080 from the kube-system namespace (Ingress controller / ALB)
+#   3. Prometheus scraping on port 8080 from the monitoring namespace
+#
+# Allowed egress:
+#   1. DNS resolution (UDP/TCP 53) to kube-dns in kube-system
+#   2. Outbound HTTPS (443) to the internet (external APIs, AWS services)
+#   3. Database traffic (TCP 5432) within the cluster
+#
+# Note: NetworkPolicy requires a CNI that supports it.
+#       On EKS the recommended CNI is AWS VPC CNI with Calico or Cilium for
+#       NetworkPolicy enforcement (aws-node does not enforce policies alone).
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: myapp-netpol
+  namespace: myapp
+  labels:
+    app: myapp
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: network-policy
+    version: v1
+spec:
+  # Apply this policy to all MyApp pods
+  podSelector:
+    matchLabels:
+      app: myapp
+      version: v1
+
+  # This policy governs both ingress and egress traffic
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # ── Ingress rules ──────────────────────────────────────────────────────────
+  ingress:
+    # Rule 1 — Allow traffic from pods within the myapp namespace
+    # (e.g. internal microservices calling MyApp)
+    - from:
+        - podSelector: {}   # Any pod in the same namespace (myapp)
+      ports:
+        - protocol: TCP
+          port: 8080
+
+    # Rule 2 — Allow traffic from the kube-system namespace
+    # (AWS Load Balancer Controller / ALB routes to pod IPs on this port)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 8080
+
+    # Rule 3 — Allow Prometheus scraping from the monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+
+  # ── Egress rules ───────────────────────────────────────────────────────────
+  egress:
+    # Rule 1 — Allow DNS resolution (UDP + TCP on port 53)
+    # Required for all outbound connections that use hostnames
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Rule 2 — Allow outbound HTTPS to the internet
+    # Required for: external API calls, AWS SDK (SSM, Secrets Manager, S3, etc.)
+    - ports:
+        - protocol: TCP
+          port: 443
+
+    # Rule 3 — Allow outbound PostgreSQL to the database
+    # Restrict to the database pod/namespace in a real setup instead of any IP
+    - ports:
+        - protocol: TCP
+          port: 5432

@@ -1,0 +1,48 @@
+# =============================================================================
+# SERVICE — IKS on IBM Cloud VPC
+# Platform: IBM Kubernetes Service (IKS) — VPC Gen2 infrastructure
+# Apply with: kubectl apply -f service.yaml
+#
+# Service type: ClusterIP
+#   Internal traffic is routed through the ClusterIP Service.
+#   External traffic enters via the VPC Application Load Balancer (ALB)
+#   defined in ingress.yaml — NOT via a LoadBalancer-type Service.
+#
+# IKS VPC also supports LoadBalancer-type Services backed by IBM Cloud VPC
+# Network Load Balancers (NLB). Example annotations shown below (commented out).
+# Use a LoadBalancer Service when you need direct L4 TCP/UDP access without
+# HTTP routing (e.g., a database proxy, gRPC service without TLS termination).
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-svc
+  namespace: myapp
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+  annotations:
+    # -------------------------------------------------------------------------
+    # Optional: Uncomment to expose this Service directly via IBM Cloud VPC NLB
+    # (Layer 4 — TCP passthrough, no TLS termination, no HTTP routing)
+    # -------------------------------------------------------------------------
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: "public"
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-vpc-lb-name: "myapp-nlb"
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features: "nlb"
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-zone: "us-south-1"
+    #
+    # For a private (internal) NLB accessible only within the VPC:
+    # service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: "private"
+spec:
+  type: ClusterIP  # Internal only — traffic enters via Ingress ALB
+  selector:
+    app: myapp
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # Port exposed within the cluster
+      targetPort: 8080  # Port the container listens on
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
