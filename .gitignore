@@ -99,3 +99,4 @@ htmlcov/
 AGENTS.md
 ./bob/mcp.json
 /bob/artifacts/IKS-vs-ROKS-Analyse-Comparative.pptx
+bob/mcp.json
