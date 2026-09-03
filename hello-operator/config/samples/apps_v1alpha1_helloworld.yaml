@@ -1,0 +1,22 @@
+---
+# Sample HelloWorld custom resource.
+# Apply with: kubectl apply -f config/samples/apps_v1alpha1_helloworld.yaml
+apiVersion: apps.example.com/v1alpha1
+kind: HelloWorld
+metadata:
+  name: helloworld-sample
+  namespace: default
+  labels:
+    app.kubernetes.io/name: helloworld-sample
+    app.kubernetes.io/managed-by: hello-operator
+spec:
+  # Number of Hello World pod replicas (1–10).
+  replicas: 2
+  # The text the HTTP server returns in its response body.
+  message: "Hello from the hello-operator!"
+  # Container image. Defaults to hashicorp/http-echo:latest.
+  image: "hashicorp/http-echo:latest"
+  # Container port. Must match the port the image listens on.
+  port: 5678
+  # How to expose the Service: ClusterIP | NodePort | LoadBalancer
+  serviceType: ClusterIP

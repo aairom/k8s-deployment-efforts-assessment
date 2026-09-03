@@ -1,0 +1,163 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: helloworlds.apps.example.com
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+spec:
+  group: apps.example.com
+  names:
+    kind: HelloWorld
+    listKind: HelloWorldList
+    plural: helloworlds
+    singular: helloworld
+    shortNames:
+      - hw
+    categories:
+      - all
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Replicas
+          type: integer
+          jsonPath: .spec.replicas
+          description: Desired replicas
+        - name: Ready
+          type: integer
+          jsonPath: .status.readyReplicas
+          description: Ready replicas
+        - name: Message
+          type: string
+          jsonPath: .spec.message
+          description: Hello message
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          description: HelloWorld is the Schema for the helloworlds API. It represents
+            a simple Hello World HTTP server managed by the hello-operator.
+          type: object
+          properties:
+            apiVersion:
+              description: APIVersion defines the versioned schema of this representation
+                of an object.
+              type: string
+            kind:
+              description: Kind is a string value representing the REST resource this
+                object represents.
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: Spec defines the desired state of the HelloWorld application.
+              type: object
+              properties:
+                image:
+                  description: Image is the container image to run. Defaults to hashicorp/http-echo:latest.
+                  type: string
+                  default: "hashicorp/http-echo:latest"
+                message:
+                  description: Message is the text returned by the Hello World HTTP server.
+                    Defaults to "Hello, World!".
+                  type: string
+                  default: "Hello, World!"
+                port:
+                  description: Port is the port the container listens on. Defaults to 5678.
+                  type: integer
+                  format: int32
+                  default: 5678
+                  minimum: 1
+                  maximum: 65535
+                replicas:
+                  description: Replicas is the number of desired pod replicas. Defaults to 1.
+                  type: integer
+                  format: int32
+                  default: 1
+                  minimum: 0
+                  maximum: 10
+                serviceType:
+                  description: ServiceType determines how the Kubernetes Service is exposed.
+                    Valid values are ClusterIP (default), NodePort, or LoadBalancer.
+                  type: string
+                  default: ClusterIP
+                  enum:
+                    - ClusterIP
+                    - NodePort
+                    - LoadBalancer
+            status:
+              description: Status defines the observed state of the HelloWorld application.
+              type: object
+              properties:
+                availableReplicas:
+                  description: AvailableReplicas is the total number of available pods.
+                  type: integer
+                  format: int32
+                conditions:
+                  description: Conditions represent the latest available observations
+                    of the HelloWorld's current state.
+                  type: array
+                  items:
+                    description: Condition contains details for one aspect of the current
+                      state of this API Resource.
+                    type: object
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    properties:
+                      lastTransitionTime:
+                        description: lastTransitionTime is the last time the condition
+                          transitioned from one status to another.
+                        type: string
+                        format: date-time
+                      message:
+                        description: message is a human readable message indicating
+                          details about the transition.
+                        type: string
+                        maxLength: 32768
+                      observedGeneration:
+                        description: observedGeneration represents the .metadata.generation
+                          that the condition was set based upon.
+                        type: integer
+                        format: int64
+                        minimum: 0
+                      reason:
+                        description: reason contains a programmatic identifier indicating
+                          the reason for the condition's last transition.
+                        type: string
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        type: string
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                      type:
+                        description: type of condition in CamelCase.
+                        type: string
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                  x-kubernetes-list-map-keys:
+                    - type
+                  x-kubernetes-list-type: map
+                observedGeneration:
+                  description: ObservedGeneration is the most recent generation observed
+                    by the controller.
+                  type: integer
+                  format: int64
+                readyReplicas:
+                  description: ReadyReplicas is the number of pods with a Ready condition.
+                  type: integer
+                  format: int32

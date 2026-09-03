@@ -1,0 +1,57 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hello-operator-manager-role
+  labels:
+    app.kubernetes.io/name: hello-operator
+    app.kubernetes.io/managed-by: kustomize
+rules:
+  # HelloWorld resources
+  - apiGroups: ["apps.example.com"]
+    resources: ["helloworlds"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps.example.com"]
+    resources: ["helloworlds/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["apps.example.com"]
+    resources: ["helloworlds/finalizers"]
+    verbs: ["update"]
+  # Deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Services
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Events (for operator status reporting)
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hello-operator-metrics-reader
+  labels:
+    app.kubernetes.io/name: hello-operator
+    app.kubernetes.io/managed-by: kustomize
+rules:
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hello-operator-proxy-role
+  labels:
+    app.kubernetes.io/name: hello-operator
+    app.kubernetes.io/managed-by: kustomize
+rules:
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
