@@ -1,0 +1,39 @@
+---
+# group_vars/gke.yml — Variables spécifiques à Google GKE
+
+# ── Authentification GCP ──────────────────────────────────────────────────────
+gcp_project_id: "{{ lookup('env', 'GOOGLE_CLOUD_PROJECT') }}"
+gcp_region: "europe-west1"
+gcp_zone: "europe-west1-b"
+
+# ── Cluster GKE ───────────────────────────────────────────────────────────────
+cluster_name: "hello-operator-gke-prod"
+kubeconfig_path: "~/.kube/config-gke-hello-operator"
+kubectl_context: "gke_{{ gcp_project_id }}_{{ gcp_region }}_{{ cluster_name }}"
+kubectl_binary: "kubectl"
+
+# ── Opérateur ─────────────────────────────────────────────────────────────────
+operator_namespace: "hello-operator-system"
+operator_image_repository: "europe-west1-docker.pkg.dev/{{ gcp_project_id }}/hello-operator/hello-operator"
+operator_image_tag: "v0.1.0"
+operator_replicas: 2
+
+# ── Manifests ─────────────────────────────────────────────────────────────────
+manifests_base_dir: "{{ playbook_dir }}/../../../hello-operator/config"
+crd_manifest: "{{ manifests_base_dir }}/crd/bases/apps.example.com_helloworlds.yaml"
+rbac_manifests_dir: "{{ manifests_base_dir }}/rbac"
+manager_manifest: "{{ manifests_base_dir }}/manager/manager.yaml"
+
+# ── HelloWorld CR ─────────────────────────────────────────────────────────────
+helloworld_cr_name: "helloworld-sample"
+helloworld_replicas: 2
+helloworld_message: "Bonjour depuis GKE!"
+
+# ── Helm ──────────────────────────────────────────────────────────────────────
+helm_chart_path: "{{ playbook_dir }}/../../../hello-operator/chart"
+helm_release_name: "hello-operator"
+helm_chart_version: ""
+
+# ── Validation ────────────────────────────────────────────────────────────────
+validation_timeout: 120
+validation_poll_interval: 10

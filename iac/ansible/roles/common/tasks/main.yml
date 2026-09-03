@@ -1,0 +1,108 @@
+---
+# roles/common/tasks/main.yml
+# Vérification des prérequis, authentification et basculement de contexte kubectl.
+
+- name: "Vérification — kubectl disponible"
+  ansible.builtin.command:
+    cmd: "which {{ kubectl_binary }}"
+  register: kubectl_check
+  changed_when: false
+  failed_when: kubectl_check.rc != 0
+
+- name: "Vérification — helm disponible"
+  ansible.builtin.command:
+    cmd: "which helm"
+  register: helm_check
+  changed_when: false
+  failed_when: helm_check.rc != 0
+
+# ── Authentification IKS / ROKS ──────────────────────────────────────────────
+
+- name: "IBM Cloud — Connexion via API key"
+  ansible.builtin.command:
+    cmd: "ibmcloud login --apikey {{ ibmcloud_api_key }} -r {{ ibmcloud_region }} -g {{ ibmcloud_resource_group }} -q"
+  when: target_platform in ['iks', 'roks']
+  no_log: true
+  changed_when: false
+
+- name: "IBM Cloud — Obtenir kubeconfig IKS"
+  ansible.builtin.command:
+    cmd: "ibmcloud ks cluster config --cluster {{ cluster_name }} --output yaml --admin"
+  register: iks_kubeconfig_result
+  when: target_platform == 'iks'
+  changed_when: false
+
+- name: "IBM Cloud — Sauvegarder kubeconfig IKS"
+  ansible.builtin.copy:
+    content: "{{ iks_kubeconfig_result.stdout }}"
+    dest: "{{ kubeconfig_path }}"
+    mode: "0600"
+  when: target_platform == 'iks' and iks_kubeconfig_result.rc == 0
+
+- name: "IBM Cloud — Obtenir kubeconfig ROKS"
+  ansible.builtin.command:
+    cmd: "ibmcloud ks cluster config --cluster {{ cluster_name }} --output yaml --admin"
+  register: roks_kubeconfig_result
+  when: target_platform == 'roks'
+  changed_when: false
+
+- name: "IBM Cloud — Sauvegarder kubeconfig ROKS"
+  ansible.builtin.copy:
+    content: "{{ roks_kubeconfig_result.stdout }}"
+    dest: "{{ kubeconfig_path }}"
+    mode: "0600"
+  when: target_platform == 'roks' and roks_kubeconfig_result.rc == 0
+
+# ── Authentification EKS ─────────────────────────────────────────────────────
+
+- name: "AWS EKS — Mettre à jour kubeconfig"
+  ansible.builtin.command:
+    cmd: "aws eks update-kubeconfig --region {{ aws_region }} --name {{ cluster_name }} --kubeconfig {{ kubeconfig_path }}"
+  when: target_platform == 'eks'
+  changed_when: true
+
+# ── Authentification AKS ─────────────────────────────────────────────────────
+
+- name: "Azure AKS — Obtenir les credentials"
+  ansible.builtin.command:
+    cmd: >
+      az aks get-credentials
+      --resource-group {{ azure_resource_group }}
+      --name {{ cluster_name }}
+      --file {{ kubeconfig_path }}
+      --overwrite-existing
+  when: target_platform == 'aks'
+  changed_when: true
+
+# ── Authentification GKE ─────────────────────────────────────────────────────
+
+- name: "GKE — Obtenir les credentials"
+  ansible.builtin.command:
+    cmd: >
+      gcloud container clusters get-credentials {{ cluster_name }}
+      --region {{ gcp_region }}
+      --project {{ gcp_project_id }}
+      --kubeconfig {{ kubeconfig_path }}
+  when: target_platform == 'gke'
+  changed_when: true
+
+# ── Basculement de contexte kubectl ──────────────────────────────────────────
+
+- name: "kubectl — Basculer vers le contexte cible"
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary }} config use-context {{ kubectl_context }} --kubeconfig {{ kubeconfig_path }}"
+  when: kubectl_context | length > 0
+  changed_when: true
+
+- name: "kubectl — Vérifier la connexion au cluster"
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary }} cluster-info --kubeconfig {{ kubeconfig_path }}"
+  register: cluster_info
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: cluster_info.rc == 0
+
+- name: "Afficher les informations du cluster"
+  ansible.builtin.debug:
+    msg: "{{ cluster_info.stdout_lines }}"

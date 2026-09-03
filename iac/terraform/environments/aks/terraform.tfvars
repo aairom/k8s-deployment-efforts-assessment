@@ -1,0 +1,31 @@
+subscription_id     = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+resource_group      = "hello-operator-aks-rg"
+location            = "westeurope"
+cluster_name        = "hello-operator-aks-prod"
+kubernetes_version  = "1.29.2"
+node_pool_name      = "systempool"
+vm_size             = "Standard_D4s_v3"
+node_count          = 2
+min_count           = 1
+max_count           = 4
+enable_auto_scaling = true
+vnet_subnet_id      = "/subscriptions/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworks/hello-operator-vnet/subnets/aks-subnet"
+tags = {
+  "ManagedBy"   = "terraform"
+  "App"         = "hello-operator"
+  "Environment" = "production"
+  "Platform"    = "aks"
+}
+kubeconfig_output_path = "~/.kube/config-aks-hello-operator"
+helm_chart_path        = "../../../hello-operator/chart"
+helm_release_name      = "hello-operator"
+helm_namespace         = "hello-operator-system"
+helm_chart_version     = ""
+helm_values_override = {
+  "replicaCount"              = "2"
+  "image.tag"                 = "v0.1.0"
+  "resources.requests.cpu"    = "100m"
+  "resources.requests.memory" = "128Mi"
+  "resources.limits.cpu"      = "500m"
+  "resources.limits.memory"   = "256Mi"
+}

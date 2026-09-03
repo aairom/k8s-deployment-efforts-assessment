@@ -1,0 +1,44 @@
+---
+# playbooks/upgrade.yml
+# Met à jour l'image du hello-operator vers une nouvelle version.
+#
+# Usage:
+#   ansible-playbook playbooks/upgrade.yml \
+#     -i inventory/<platform>.yml \
+#     -e target_platform=eks \
+#     -e new_image_tag=v0.2.0
+
+- name: "Mise à jour rolling du hello-operator"
+  hosts: "{{ target_platform }}"
+  gather_facts: false
+  vars:
+    target_platform: "iks"
+    new_image_tag: "v0.2.0"
+
+  pre_tasks:
+    - name: "Validation — target_platform fourni"
+      ansible.builtin.assert:
+        that:
+          - target_platform is defined
+          - target_platform in ['iks', 'roks', 'eks', 'aks', 'gke']
+        fail_msg: "target_platform doit être l'un de: iks, roks, eks, aks, gke"
+
+    - name: "Validation — new_image_tag fourni"
+      ansible.builtin.assert:
+        that:
+          - new_image_tag is defined
+          - new_image_tag | length > 0
+        fail_msg: "new_image_tag est requis pour l'upgrade (ex: -e new_image_tag=v0.2.0)"
+
+  roles:
+    - role: common
+
+  tasks:
+    - name: "Inclure les tâches d'upgrade"
+      ansible.builtin.include_tasks:
+        file: "../roles/lifecycle/tasks/upgrade.yml"
+
+  post_tasks:
+    - name: "Validation post-upgrade"
+      ansible.builtin.include_role:
+        name: validate

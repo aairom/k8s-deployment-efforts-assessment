@@ -1,0 +1,17 @@
+---
+# roles/lifecycle/defaults/main.yml
+
+operator_namespace: "hello-operator-system"
+helm_release_name: "hello-operator"
+kubectl_binary: "kubectl"
+kubeconfig_path: "~/.kube/config"
+
+# Image pour la mise à jour
+new_image_tag: "v0.2.0"
+operator_image_repository: "hello-operator/hello-operator"
+
+# Nombre de révisions Helm à conserver
+helm_history_max: 5
+
+# Délai en secondes entre les vérifications de rollout
+rollout_timeout: "120s"

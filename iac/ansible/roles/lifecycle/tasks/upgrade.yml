@@ -1,0 +1,46 @@
+---
+# roles/lifecycle/tasks/upgrade.yml
+# Mise à jour rolling de l'opérateur vers une nouvelle version d'image.
+
+- name: "Upgrade — Vérifier la version cible"
+  ansible.builtin.debug:
+    msg: "Mise à jour de {{ helm_release_name }} vers {{ new_image_tag }} sur {{ target_platform }}"
+
+- name: "Upgrade — Mettre à jour l'image via kubectl set image"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} set image
+      deployment/{{ helm_release_name }}-controller-manager
+      manager={{ operator_image_repository }}:{{ new_image_tag }}
+      -n {{ operator_namespace }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: upgrade_result
+  changed_when: upgrade_result.rc == 0
+
+- name: "Upgrade — Annoter le déploiement avec la nouvelle version"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} annotate deployment/{{ helm_release_name }}-controller-manager
+      kubernetes.io/change-cause="Upgrade vers {{ new_image_tag }} via Ansible - {{ ansible_date_time.iso8601 }}"
+      -n {{ operator_namespace }}
+      --overwrite
+      --kubeconfig {{ kubeconfig_path }}
+  changed_when: true
+
+- name: "Upgrade — Attendre la fin du rolling update"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} rollout status
+      deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --timeout={{ rollout_timeout }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: rollout_status
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: rollout_status.rc == 0
+
+- name: "Upgrade — Résultat"
+  ansible.builtin.debug:
+    msg: "Rolling update terminé avec succès. Statut: {{ rollout_status.stdout }}"

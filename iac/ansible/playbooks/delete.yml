@@ -1,0 +1,39 @@
+---
+# playbooks/delete.yml
+# Supprime complètement l'opérateur, le CRD, le RBAC et le namespace.
+#
+# Usage:
+#   ansible-playbook playbooks/delete.yml \
+#     -i inventory/<platform>.yml \
+#     -e target_platform=aks
+#
+# ⚠️  Cette opération est IRRÉVERSIBLE. Toutes les CRs HelloWorld seront supprimées.
+
+- name: "Suppression complète du hello-operator"
+  hosts: "{{ target_platform }}"
+  gather_facts: false
+  vars:
+    target_platform: "iks"
+
+  pre_tasks:
+    - name: "Validation — target_platform fourni"
+      ansible.builtin.assert:
+        that:
+          - target_platform is defined
+          - target_platform in ['iks', 'roks', 'eks', 'aks', 'gke']
+        fail_msg: "target_platform doit être l'un de: iks, roks, eks, aks, gke"
+
+    - name: "Confirmation de la suppression"
+      ansible.builtin.pause:
+        prompt: >
+          ⚠️  ATTENTION : Vous êtes sur le point de supprimer définitivement
+          le hello-operator et toutes ses ressources sur {{ target_platform }}.
+          Appuyez sur ENTRÉE pour confirmer ou Ctrl+C pour annuler.
+
+  roles:
+    - role: common
+
+  tasks:
+    - name: "Inclure les tâches de suppression"
+      ansible.builtin.include_tasks:
+        file: "../roles/lifecycle/tasks/delete.yml"

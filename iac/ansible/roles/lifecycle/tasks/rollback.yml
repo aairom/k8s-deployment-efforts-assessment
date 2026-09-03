@@ -1,0 +1,45 @@
+---
+# roles/lifecycle/tasks/rollback.yml
+# Rollback du déploiement de l'opérateur à la révision précédente.
+
+- name: "Rollback — Afficher l'historique des révisions"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} rollout history
+      deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: rollout_history
+  changed_when: false
+
+- name: "Rollback — Historique"
+  ansible.builtin.debug:
+    msg: "{{ rollout_history.stdout_lines }}"
+
+- name: "Rollback — Revenir à la révision précédente"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} rollout undo
+      deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: rollback_result
+  changed_when: rollback_result.rc == 0
+
+- name: "Rollback — Attendre la stabilisation"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} rollout status
+      deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --timeout={{ rollout_timeout }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: rollback_status
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: rollback_status.rc == 0
+
+- name: "Rollback — Résultat"
+  ansible.builtin.debug:
+    msg: "Rollback terminé. Statut: {{ rollback_status.stdout }}"

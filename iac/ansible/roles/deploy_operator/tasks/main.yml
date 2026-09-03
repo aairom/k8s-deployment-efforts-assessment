@@ -1,0 +1,115 @@
+---
+# roles/deploy_operator/tasks/main.yml
+# Déploie le hello-operator : CRDs → RBAC → Operator Deployment → CR de validation.
+
+# ── 1. Créer le namespace ─────────────────────────────────────────────────────
+
+- name: "Créer le namespace {{ operator_namespace }}"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} create namespace {{ operator_namespace }}
+      --dry-run=client -o yaml
+      --kubeconfig {{ kubeconfig_path }}
+    stdin: ""
+  register: ns_yaml
+  changed_when: false
+
+- name: "Appliquer le namespace {{ operator_namespace }}"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} apply -f - --kubeconfig {{ kubeconfig_path }}
+    stdin: "{{ ns_yaml.stdout }}"
+  changed_when: true
+
+# ── 2. Appliquer les CRDs ─────────────────────────────────────────────────────
+
+- name: "Appliquer le CRD HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} apply -f {{ crd_manifest }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: crd_result
+  changed_when: "'configured' in crd_result.stdout or 'created' in crd_result.stdout"
+
+- name: "Attendre l'établissement du CRD"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} wait
+      --for=condition=Established
+      crd/helloworlds.apps.example.com
+      --timeout=60s
+      --kubeconfig {{ kubeconfig_path }}
+  changed_when: false
+  retries: 5
+  delay: 5
+
+# ── 3. Appliquer le RBAC ──────────────────────────────────────────────────────
+
+- name: "Lister les fichiers RBAC à appliquer"
+  ansible.builtin.find:
+    paths: "{{ rbac_manifests_dir }}"
+    patterns: "*.yaml"
+  register: rbac_files
+
+- name: "Appliquer les manifests RBAC"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} apply -f {{ item.path }}
+      --kubeconfig {{ kubeconfig_path }}
+  loop: "{{ rbac_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  register: rbac_result
+  changed_when: "'configured' in rbac_result.stdout or 'created' in rbac_result.stdout"
+
+# ── 4. Déployer l'opérateur ──────────────────────────────────────────────────
+
+- name: "Générer le manifest de déploiement depuis le template"
+  ansible.builtin.template:
+    src: "operator_deployment.yaml.j2"
+    dest: "/tmp/hello-operator-deployment-{{ target_platform }}.yaml"
+    mode: "0644"
+
+- name: "Appliquer le déploiement de l'opérateur"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} apply -f /tmp/hello-operator-deployment-{{ target_platform }}.yaml
+      --kubeconfig {{ kubeconfig_path }}
+  register: deploy_result
+  changed_when: "'configured' in deploy_result.stdout or 'created' in deploy_result.stdout"
+
+- name: "Attendre que le déploiement de l'opérateur soit prêt"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} rollout status deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --timeout=120s
+      --kubeconfig {{ kubeconfig_path }}
+  register: rollout_result
+  changed_when: false
+  retries: 3
+  delay: 15
+  until: rollout_result.rc == 0
+
+# ── 5. Appliquer un CR HelloWorld de validation ───────────────────────────────
+
+- name: "Générer le CR HelloWorld depuis le template"
+  ansible.builtin.template:
+    src: "helloworld_cr.yaml.j2"
+    dest: "/tmp/helloworld-cr-{{ target_platform }}.yaml"
+    mode: "0644"
+
+- name: "Appliquer le CR HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} apply -f /tmp/helloworld-cr-{{ target_platform }}.yaml
+      --kubeconfig {{ kubeconfig_path }}
+  register: cr_result
+  changed_when: "'configured' in cr_result.stdout or 'created' in cr_result.stdout"
+
+- name: "Résultat du déploiement"
+  ansible.builtin.debug:
+    msg:
+      - "CRD       : {{ crd_result.stdout }}"
+      - "Operator  : {{ deploy_result.stdout }}"
+      - "HelloWorld: {{ cr_result.stdout }}"

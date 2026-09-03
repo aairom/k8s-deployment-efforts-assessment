@@ -1,0 +1,26 @@
+---
+# playbooks/validate.yml
+# Valide que le hello-operator est correctement déployé et opérationnel.
+#
+# Usage:
+#   ansible-playbook playbooks/validate.yml \
+#     -i inventory/<platform>.yml \
+#     -e target_platform=gke
+
+- name: "Validation du déploiement du hello-operator"
+  hosts: "{{ target_platform }}"
+  gather_facts: false
+  vars:
+    target_platform: "iks"
+
+  pre_tasks:
+    - name: "Validation — target_platform fourni"
+      ansible.builtin.assert:
+        that:
+          - target_platform is defined
+          - target_platform in ['iks', 'roks', 'eks', 'aks', 'gke']
+        fail_msg: "target_platform doit être l'un de: iks, roks, eks, aks, gke"
+
+  roles:
+    - role: common
+    - role: validate

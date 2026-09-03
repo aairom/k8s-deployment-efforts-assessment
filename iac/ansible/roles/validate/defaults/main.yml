@@ -1,0 +1,10 @@
+---
+# roles/validate/defaults/main.yml
+
+operator_namespace: "hello-operator-system"
+helm_release_name: "hello-operator"
+kubectl_binary: "kubectl"
+kubeconfig_path: "~/.kube/config"
+helloworld_cr_name: "helloworld-sample"
+validation_timeout: 120
+validation_poll_interval: 10

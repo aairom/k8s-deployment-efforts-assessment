@@ -1,0 +1,26 @@
+project_id             = "mon-projet-gcp-123456"
+region                 = "europe-west1"
+zone                   = "europe-west1-b"
+cluster_name           = "hello-operator-gke-prod"
+kubernetes_version     = "1.29"
+node_pool_name         = "hello-operator-pool"
+machine_type           = "e2-standard-4"
+initial_node_count     = 1
+min_node_count         = 1
+max_node_count         = 4
+network                = "hello-operator-vpc"
+subnetwork             = "hello-operator-subnet"
+tags                   = ["hello-operator", "managed-by-terraform", "env-production"]
+kubeconfig_output_path = "~/.kube/config-gke-hello-operator"
+helm_chart_path        = "../../../hello-operator/chart"
+helm_release_name      = "hello-operator"
+helm_namespace         = "hello-operator-system"
+helm_chart_version     = ""
+helm_values_override = {
+  "replicaCount"              = "2"
+  "image.tag"                 = "v0.1.0"
+  "resources.requests.cpu"    = "100m"
+  "resources.requests.memory" = "128Mi"
+  "resources.limits.cpu"      = "500m"
+  "resources.limits.memory"   = "256Mi"
+}

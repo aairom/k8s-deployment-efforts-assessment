@@ -1,0 +1,74 @@
+---
+# roles/lifecycle/tasks/delete.yml
+# Suppression complète de l'opérateur et nettoyage des CRDs.
+
+- name: "Delete — Supprimer toutes les CRs HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} delete helloworld --all
+      -n {{ operator_namespace }}
+      --ignore-not-found=true
+      --timeout=60s
+      --kubeconfig {{ kubeconfig_path }}
+  register: cr_delete
+  changed_when: cr_delete.rc == 0
+
+- name: "Delete — Attendre la suppression des CRs (finalizers)"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} wait
+      --for=delete helloworld --all
+      -n {{ operator_namespace }}
+      --timeout=60s
+      --kubeconfig {{ kubeconfig_path }}
+  register: cr_wait
+  changed_when: false
+  failed_when: false
+
+- name: "Delete — Supprimer le déploiement de l'opérateur"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} delete deployment/{{ helm_release_name }}-controller-manager
+      -n {{ operator_namespace }}
+      --ignore-not-found=true
+      --kubeconfig {{ kubeconfig_path }}
+  register: deploy_delete
+  changed_when: deploy_delete.rc == 0
+
+- name: "Delete — Supprimer les ressources RBAC"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} delete -f {{ item }}
+      --ignore-not-found=true
+      --kubeconfig {{ kubeconfig_path }}
+  with_fileglob:
+    - "{{ rbac_manifests_dir }}/*.yaml"
+  register: rbac_delete
+  changed_when: rbac_delete.rc == 0
+
+- name: "Delete — Supprimer le CRD HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} delete crd helloworlds.apps.example.com
+      --ignore-not-found=true
+      --kubeconfig {{ kubeconfig_path }}
+  register: crd_delete
+  changed_when: crd_delete.rc == 0
+
+- name: "Delete — Supprimer le namespace"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} delete namespace {{ operator_namespace }}
+      --ignore-not-found=true
+      --timeout=60s
+      --kubeconfig {{ kubeconfig_path }}
+  register: ns_delete
+  changed_when: ns_delete.rc == 0
+
+- name: "Delete — Résumé"
+  ansible.builtin.debug:
+    msg:
+      - "CRs supprimées   : {{ cr_delete.stdout | default('aucune') }}"
+      - "Deployment supprimé: {{ deploy_delete.stdout | default('aucun') }}"
+      - "CRD supprimé     : {{ crd_delete.stdout | default('aucun') }}"
+      - "Namespace supprimé: {{ ns_delete.stdout | default('aucun') }}"

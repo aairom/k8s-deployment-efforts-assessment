@@ -1,0 +1,38 @@
+---
+# group_vars/eks.yml — Variables spécifiques à Amazon EKS
+
+# ── Authentification AWS ──────────────────────────────────────────────────────
+aws_region: "eu-west-1"
+aws_account_id: "{{ lookup('env', 'AWS_ACCOUNT_ID') }}"
+
+# ── Cluster EKS ───────────────────────────────────────────────────────────────
+cluster_name: "hello-operator-eks-prod"
+kubeconfig_path: "~/.kube/config-eks-hello-operator"
+kubectl_context: "arn:aws:eks:{{ aws_region }}:{{ aws_account_id }}:cluster/{{ cluster_name }}"
+kubectl_binary: "kubectl"
+
+# ── Opérateur ─────────────────────────────────────────────────────────────────
+operator_namespace: "hello-operator-system"
+operator_image_repository: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/hello-operator"
+operator_image_tag: "v0.1.0"
+operator_replicas: 2
+
+# ── Manifests ─────────────────────────────────────────────────────────────────
+manifests_base_dir: "{{ playbook_dir }}/../../../hello-operator/config"
+crd_manifest: "{{ manifests_base_dir }}/crd/bases/apps.example.com_helloworlds.yaml"
+rbac_manifests_dir: "{{ manifests_base_dir }}/rbac"
+manager_manifest: "{{ manifests_base_dir }}/manager/manager.yaml"
+
+# ── HelloWorld CR ─────────────────────────────────────────────────────────────
+helloworld_cr_name: "helloworld-sample"
+helloworld_replicas: 2
+helloworld_message: "Bonjour depuis EKS!"
+
+# ── Helm ──────────────────────────────────────────────────────────────────────
+helm_chart_path: "{{ playbook_dir }}/../../../hello-operator/chart"
+helm_release_name: "hello-operator"
+helm_chart_version: ""
+
+# ── Validation ────────────────────────────────────────────────────────────────
+validation_timeout: 120
+validation_poll_interval: 10

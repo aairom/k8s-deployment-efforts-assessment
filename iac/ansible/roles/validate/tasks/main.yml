@@ -1,0 +1,109 @@
+---
+# roles/validate/tasks/main.yml
+# Vérifie que l'opérateur est opérationnel et que le CR HelloWorld atteint l'état Ready.
+
+# ── 1. Vérifier l'enregistrement du CRD ──────────────────────────────────────
+
+- name: "Validate — CRD HelloWorld enregistré"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} get crd helloworlds.apps.example.com
+      --kubeconfig {{ kubeconfig_path }}
+  register: crd_check
+  changed_when: false
+  failed_when: crd_check.rc != 0
+
+- name: "Validate — Condition Established du CRD"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} wait
+      --for=condition=Established
+      crd/helloworlds.apps.example.com
+      --timeout=30s
+      --kubeconfig {{ kubeconfig_path }}
+  changed_when: false
+
+# ── 2. Vérifier la disponibilité du pod opérateur ─────────────────────────────
+
+- name: "Validate — Pod opérateur en état Running"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} wait pod
+      -l app.kubernetes.io/name=hello-operator
+      -n {{ operator_namespace }}
+      --for=condition=Ready
+      --timeout={{ validation_timeout }}s
+      --kubeconfig {{ kubeconfig_path }}
+  register: pod_ready
+  changed_when: false
+  retries: 5
+  delay: "{{ validation_poll_interval }}"
+  until: pod_ready.rc == 0
+
+- name: "Validate — Lister les pods opérateur"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} get pods
+      -n {{ operator_namespace }}
+      -l app.kubernetes.io/name=hello-operator
+      -o wide
+      --kubeconfig {{ kubeconfig_path }}
+  register: pod_list
+  changed_when: false
+
+- name: "Validate — Afficher les pods"
+  ansible.builtin.debug:
+    msg: "{{ pod_list.stdout_lines }}"
+
+# ── 3. Vérifier le CR HelloWorld ──────────────────────────────────────────────
+
+- name: "Validate — Vérifier l'existence du CR HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} get helloworld {{ helloworld_cr_name }}
+      -n {{ operator_namespace }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: cr_exists
+  changed_when: false
+  failed_when: cr_exists.rc != 0
+
+- name: "Validate — Attendre le statut Ready du CR HelloWorld"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} wait helloworld/{{ helloworld_cr_name }}
+      -n {{ operator_namespace }}
+      --for=condition=Ready
+      --timeout={{ validation_timeout }}s
+      --kubeconfig {{ kubeconfig_path }}
+  register: cr_ready
+  changed_when: false
+  retries: "{{ (validation_timeout / validation_poll_interval) | int }}"
+  delay: "{{ validation_poll_interval }}"
+  until: cr_ready.rc == 0
+
+# ── 4. Vérifier le Deployment créé par l'opérateur ───────────────────────────
+
+- name: "Validate — Deployment HelloWorld créé par l'opérateur"
+  ansible.builtin.command:
+    cmd: >
+      {{ kubectl_binary }} get deployment
+      -n {{ operator_namespace }}
+      -l app.kubernetes.io/instance={{ helloworld_cr_name }}
+      --kubeconfig {{ kubeconfig_path }}
+  register: hw_deployment
+  changed_when: false
+
+- name: "Validate — Afficher le Deployment HelloWorld"
+  ansible.builtin.debug:
+    msg: "{{ hw_deployment.stdout_lines }}"
+
+# ── 5. Résumé de la validation ────────────────────────────────────────────────
+
+- name: "Validate — Résumé"
+  ansible.builtin.debug:
+    msg:
+      - "✅ CRD helloworlds.apps.example.com : Established"
+      - "✅ Pod opérateur                    : Ready"
+      - "✅ CR {{ helloworld_cr_name }}       : Ready"
+      - "✅ Déploiement HelloWorld            : présent"
+      - "Plateforme : {{ target_platform }}"

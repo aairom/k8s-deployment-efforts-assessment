@@ -1,0 +1,70 @@
+---
+# Template Jinja2 — Déploiement du hello-operator controller manager
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ helm_release_name }}-controller-manager
+  namespace: {{ operator_namespace }}
+  labels:
+    app.kubernetes.io/name: hello-operator
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/managed-by: ansible
+    platform: {{ target_platform }}
+spec:
+  replicas: {{ operator_replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-operator
+      app.kubernetes.io/component: controller-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hello-operator
+        app.kubernetes.io/component: controller-manager
+        platform: {{ target_platform }}
+    spec:
+      serviceAccountName: hello-operator-controller-manager
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: manager
+          image: {{ operator_image_repository }}:{{ operator_image_tag }}
+          imagePullPolicy: {{ operator_image_pull_policy }}
+          command:
+            - /manager
+          args:
+            - --leader-elect
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      terminationGracePeriodSeconds: 10

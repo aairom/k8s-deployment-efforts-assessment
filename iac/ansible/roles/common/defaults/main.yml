@@ -1,0 +1,30 @@
+---
+# roles/common/defaults/main.yml
+
+# Binaire kubectl à utiliser (peut être surchargé par 'oc' pour ROKS)
+kubectl_binary: "kubectl"
+
+# Chemin kubeconfig à utiliser
+kubeconfig_path: "~/.kube/config"
+
+# Contexte kubectl à activer
+kubectl_context: ""
+
+# Outils requis et leurs versions minimales
+required_tools:
+  - { name: "kubectl",   min_version: "1.28.0" }
+  - { name: "helm",      min_version: "3.14.0" }
+
+# Outils spécifiques par plateforme (détectés via la variable platform)
+platform_tools:
+  iks:
+    - { name: "ibmcloud",   min_version: "2.20.0" }
+  roks:
+    - { name: "ibmcloud",   min_version: "2.20.0" }
+    - { name: "oc",         min_version: "4.14.0" }
+  eks:
+    - { name: "aws",        min_version: "2.13.0" }
+  aks:
+    - { name: "az",         min_version: "2.55.0" }
+  gke:
+    - { name: "gcloud",     min_version: "460.0.0" }

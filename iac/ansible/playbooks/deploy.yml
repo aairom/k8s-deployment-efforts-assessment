@@ -1,0 +1,25 @@
+---
+# playbooks/deploy.yml
+# Déploie le hello-operator sur la plateforme spécifiée via -e target_platform=<iks|roks|eks|aks|gke>
+#
+# Usage:
+#   ansible-playbook playbooks/deploy.yml -i inventory/<platform>.yml -e target_platform=iks
+
+- name: "Déploiement du hello-operator"
+  hosts: "{{ target_platform }}"
+  gather_facts: false
+  vars:
+    target_platform: "iks"  # Valeur par défaut, surcharger via -e
+
+  pre_tasks:
+    - name: "Validation — target_platform fourni"
+      ansible.builtin.assert:
+        that:
+          - target_platform is defined
+          - target_platform in ['iks', 'roks', 'eks', 'aks', 'gke']
+        fail_msg: "target_platform doit être l'un de: iks, roks, eks, aks, gke"
+
+  roles:
+    - role: common
+    - role: deploy_operator
+    - role: validate

@@ -1,0 +1,16 @@
+---
+# Template Jinja2 — CR HelloWorld
+# Appliqué après le déploiement de l'opérateur pour déclencher la réconciliation.
+apiVersion: apps.example.com/v1alpha1
+kind: HelloWorld
+metadata:
+  name: {{ helloworld_cr_name }}
+  namespace: {{ operator_namespace }}
+  labels:
+    app.kubernetes.io/name: helloworld
+    app.kubernetes.io/instance: {{ helloworld_cr_name }}
+    app.kubernetes.io/managed-by: ansible
+    platform: {{ target_platform }}
+spec:
+  replicas: {{ helloworld_replicas }}
+  message: "{{ helloworld_message }}"
