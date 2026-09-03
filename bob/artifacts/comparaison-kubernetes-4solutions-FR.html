@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparaison Kubernetes 4 Solutions — FR</title>
+<style>
+  :root {
+    --iks:   #0061AA;
+    --roks:  #CC0000;
+    --k8s:   #326CE5;
+    --eks:   #FF9900;
+    --dark:  #1E2761;
+    --text:  #1f2328;
+    --muted: #57606a;
+    --bg:    #ffffff;
+    --surf:  #f7f8fa;
+    --bdr:   #e5e7eb;
+    --acc:   #3b82d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6; color: var(--text);
+    background: var(--bg);
+  }
+  /* ── Header ── */
+  .page-header {
+    background: var(--dark);
+    color: #fff;
+    padding: 2.5rem 2rem 2rem;
+  }
+  .page-header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: .4rem; }
+  .page-header .subtitle { color: #b0c4de; font-size: 1rem; margin-bottom: 1rem; }
+  .badges { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .badge {
+    padding: .25rem .75rem; border-radius: 2rem; font-size: .78rem;
+    font-weight: 600; color: #fff;
+  }
+  .b-iks  { background: var(--iks);  }
+  .b-roks { background: var(--roks); }
+  .b-k8s  { background: var(--k8s);  }
+  .b-eks  { background: var(--eks); color: #1a1a1a; }
+  /* ── Navigation / TOC ── */
+  .toc {
+    background: var(--surf); border-bottom: 1px solid var(--bdr);
+    padding: 1rem 2rem; display: flex; flex-wrap: wrap; gap: .5rem;
+  }
+  .toc a {
+    color: var(--acc); text-decoration: none; font-size: .82rem;
+    padding: .2rem .5rem; border-radius: 4px;
+    border: 1px solid var(--bdr);
+  }
+  .toc a:hover { background: var(--dark); color: #fff; border-color: var(--dark); }
+  /* ── Main layout ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  /* ── Sections ── */
+  .section { margin-bottom: 3rem; }
+  .section-title {
+    font-size: 1.2rem; font-weight: 700; color: var(--dark);
+    border-left: 4px solid var(--acc); padding-left: .75rem;
+    margin-bottom: 1.25rem;
+  }
+  /* ── Solution cards ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+  .card { border-radius: 6px; overflow: hidden; border: 1px solid var(--bdr); }
+  .card-header { padding: .65rem 1rem; color: #fff; font-weight: 700; font-size: .95rem; }
+  .card-iks  .card-header { background: var(--iks);  }
+  .card-roks .card-header { background: var(--roks); }
+  .card-k8s  .card-header { background: var(--k8s);  }
+  .card-eks  .card-header { background: var(--eks); color: #1a1a1a; }
+  .card-body { padding: .85rem 1rem; background: var(--surf); }
+  .card-body ul { padding-left: 1.2rem; }
+  .card-body li { margin-bottom: .3rem; font-size: .85rem; color: var(--text); }
+  .card-body .tag { font-size: .75rem; color: var(--muted); margin-bottom: .5rem; }
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th {
+    background: var(--dark); color: #fff;
+    padding: .55rem .75rem; text-align: left; font-weight: 600;
+  }
+  th.h-iks  { background: var(--iks);  }
+  th.h-roks { background: var(--roks); }
+  th.h-k8s  { background: var(--k8s);  }
+  th.h-eks  { background: var(--eks); color: #1a1a1a; }
+  td { padding: .5rem .75rem; border-bottom: 1px solid var(--bdr); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--surf); }
+  tr:hover td { background: #eef4fb; }
+  td:first-child { font-weight: 600; color: var(--dark); white-space: nowrap; }
+  /* ── Stars ── */
+  .stars { color: #f5a623; letter-spacing: 1px; }
+  /* ── Check / Cross ── */
+  .yes { color: #1a7f37; font-weight: 700; }
+  .no  { color: #cc0000; font-weight: 700; }
+  /* ── Recommendation boxes ── */
+  .rec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+  .rec-box { border-radius: 6px; border: 1px solid var(--bdr); overflow: hidden; }
+  .rec-header { padding: .6rem 1rem; color: #fff; font-weight: 700; font-size: .9rem; }
+  .rec-iks  .rec-header { background: var(--iks);  }
+  .rec-roks .rec-header { background: var(--roks); }
+  .rec-k8s  .rec-header { background: var(--k8s);  }
+  .rec-eks  .rec-header { background: var(--eks); color: #1a1a1a; }
+  .rec-body { padding: .85rem 1rem; background: var(--surf); font-size: .85rem; }
+  .rec-body .solution { font-weight: 700; margin-bottom: .5rem; }
+  .rec-body ul { padding-left: 1.2rem; }
+  .rec-body li { margin-bottom: .25rem; }
+  /* ── Summary matrix ── */
+  .matrix th { font-size: .78rem; padding: .45rem .6rem; }
+  .matrix td { font-size: .78rem; padding: .45rem .6rem; }
+  /* ── Decision table ── */
+  .decision td:last-child { font-weight: 600; color: var(--acc); }
+  /* ── Note box ── */
+  .note {
+    background: #fffbeb; border-left: 4px solid var(--eks);
+    padding: .75rem 1rem; border-radius: 0 6px 6px 0;
+    font-size: .84rem; color: #6b4c00; margin-top: .75rem;
+  }
+  /* ── Footer ── */
+  footer {
+    margin-top: 3rem; padding: 1.25rem 2rem;
+    border-top: 1px solid var(--bdr);
+    text-align: center; font-size: .78rem; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="page-header">
+  <h1>Comparaison des Solutions Kubernetes</h1>
+  <p class="subtitle">Analyse complète · IKS · ROKS · Kubernetes Auto-Géré · Amazon EKS · Septembre 2026</p>
+  <div class="badges">
+    <span class="badge b-iks">IKS — IBM Cloud</span>
+    <span class="badge b-roks">ROKS — IBM Cloud + Red Hat</span>
+    <span class="badge b-k8s">K8s Auto-Géré</span>
+    <span class="badge b-eks">Amazon EKS</span>
+  </div>
+</header>
+
+<!-- ═══════════════════ TOC ═══════════════════ -->
+<nav class="toc">
+  <a href="#s1">Résumé</a>
+  <a href="#s2">Vue d'ensemble</a>
+  <a href="#s3">Infrastructure</a>
+  <a href="#s4">Déploiement</a>
+  <a href="#s5">Versions K8s</a>
+  <a href="#s6">Sécurité</a>
+  <a href="#s7">Réseau</a>
+  <a href="#s8">Stockage</a>
+  <a href="#s9">Coûts</a>
+  <a href="#s10">Écosystème</a>
+  <a href="#s11">Support</a>
+  <a href="#s12">Opérations</a>
+  <a href="#s13">Matrice</a>
+  <a href="#s14">Recommandations</a>
+</nav>
+
+<main>
+
+<!-- ═══════════════════ S1 — RÉSUMÉ ═══════════════════ -->
+<section class="section" id="s1">
+  <h2 class="section-title">1. Résumé Exécutif</h2>
+  <p>Cette analyse compare les quatre solutions Kubernetes les plus représentatives du marché, des services entièrement managés aux déploiements autogérés sur infrastructure propre.</p>
+  <br>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Solution</th><th>Fournisseur</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td>IBM Kubernetes Service (IKS)</td><td>IBM Cloud</td><td>Kubernetes managé</td></tr>
+        <tr><td>Red Hat OpenShift on IBM Cloud (ROKS)</td><td>IBM Cloud + Red Hat</td><td>OpenShift managé</td></tr>
+        <tr><td>Kubernetes Auto-Géré</td><td>Infrastructure propre / IaaS</td><td>Kubernetes autogéré</td></tr>
+        <tr><td>Amazon EKS</td><td>Amazon Web Services</td><td>Kubernetes managé</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="margin-top:.75rem;color:var(--muted);font-size:.85rem;">Le choix optimal dépend du contexte organisationnel : cloud existant, exigences réglementaires, expertise interne et stratégie à long terme.</p>
+</section>
+
+<!-- ═══════════════════ S2 — VUE D'ENSEMBLE ═══════════════════ -->
+<section class="section" id="s2">
+  <h2 class="section-title">2. Vue d'ensemble des Solutions</h2>
+  <div class="cards">
+    <div class="card card-iks">
+      <div class="card-header">IBM Kubernetes Service (IKS)</div>
+      <div class="card-body">
+        <p class="tag">Kubernetes vanilla certifié CNCF — IBM Cloud</p>
+        <ul>
+          <li>Plan de contrôle dédié, géré par IBM</li>
+          <li>Nœuds Ubuntu 22.04 LTS / RHEL 8</li>
+          <li>Runtime containerd, CNI Calico</li>
+          <li>Intégration IBM Cloud IAM, Key Protect, ICR</li>
+          <li>ISO 27001, SOC 2, PCI DSS, HIPAA</li>
+          <li>Coût d'entrée le plus bas (IBM Cloud)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-roks">
+      <div class="card-header">ROKS — Red Hat OpenShift on IBM Cloud</div>
+      <div class="card-body">
+        <p class="tag">OpenShift Container Platform 4.x managé — IBM Cloud</p>
+        <ul>
+          <li>Plan de contrôle OCP dédié, géré par IBM</li>
+          <li>Nœuds RHCOS immutables, SELinux enforcing</li>
+          <li>Runtime CRI-O, SCC par défaut</li>
+          <li>OperatorHub, Tekton, S2I, Web Console intégrés</li>
+          <li>Requis pour les IBM Cloud Paks</li>
+          <li>FIPS 140-2, FedRAMP, DoD CC SRG</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-k8s">
+      <div class="card-header">Kubernetes Auto-Géré</div>
+      <div class="card-body">
+        <p class="tag">On-premises / IaaS non managé — Infrastructure propre</p>
+        <ul>
+          <li>Contrôle total : version, configuration, composants</li>
+          <li>kubeadm, k3s, RKE2, Talos, Rancher…</li>
+          <li>Charge opérationnelle maximale (etcd, PKI, CNI, CSI)</li>
+          <li>Aucune dépendance fournisseur</li>
+          <li>Adapté air-gapped et souveraineté des données</li>
+          <li>Expertise SRE avancée indispensable</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-eks">
+      <div class="card-header">Amazon EKS</div>
+      <div class="card-body">
+        <p class="tag">Kubernetes managé certifié CNCF — Amazon Web Services</p>
+        <ul>
+          <li>Plan de contrôle multi-AZ managé par AWS</li>
+          <li>EC2 Managed Node Groups + Fargate (serverless)</li>
+          <li>AWS VPC CNI (IPs VPC natives pour les pods)</li>
+          <li>Intégration IAM AWS, EBS/EFS/FSx, ECR, ALB</li>
+          <li>EKS Anywhere pour on-premises</li>
+          <li>SOC, PCI, ISO, HIPAA, FedRAMP</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S3 — INFRASTRUCTURE ═══════════════════ -->
+<section class="section" id="s3">
+  <h2 class="section-title">3. Infrastructure &amp; Modèle d'Hébergement</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Localisation</td><td>Datacenters IBM Cloud (6 continents)</td><td>Datacenters IBM Cloud</td><td>Infrastructure propre / datacenter / IaaS</td><td>Régions AWS (35+)</td></tr>
+        <tr><td>Type de nœuds</td><td>VMs IBM Cloud, bare metal optionnel</td><td>VMs IBM Cloud, bare metal optionnel</td><td>Bare metal, VMs (VMware, KVM, etc.)</td><td>EC2, bare metal, Fargate</td></tr>
+        <tr><td>Haute disponibilité</td><td>Multi-zone (MZC) dans une région IBM</td><td>Multi-zone dans une région IBM</td><td>À concevoir manuellement</td><td>Multi-AZ natif</td></tr>
+        <tr><td>Option on-premises</td><td>Via IBM Cloud Satellite</td><td>Via IBM Cloud Satellite</td><td>Native (raison d'être principale)</td><td>Via EKS Anywhere</td></tr>
+        <tr><td>Isolation réseau</td><td>VPC IBM Cloud ou Classic</td><td>VPC IBM Cloud ou Classic</td><td>Totale (infrastructure propre)</td><td>AWS VPC</td></tr>
+        <tr><td>SLA plan de contrôle</td><td>99,9 %</td><td>99,9 %</td><td>Interne (aucun SLA fournisseur)</td><td>99,95 %</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S4 — DÉPLOIEMENT ═══════════════════ -->
+<section class="section" id="s4">
+  <h2 class="section-title">4. Facilité de Déploiement &amp; Provisionnement</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Outils de provisionnement</td><td>ibmcloud ks, Terraform, UI IBM Cloud</td><td>ibmcloud oc, Terraform, UI IBM Cloud</td><td>kubeadm, k3s, RKE2, Kubespray, Ansible</td><td>eksctl, AWS Console, Terraform, CDK</td></tr>
+        <tr><td>Délai de déploiement</td><td>~10–15 min</td><td>~20–30 min</td><td>Plusieurs heures à plusieurs jours</td><td>~10–15 min</td></tr>
+        <tr><td>Auto-scaling nœuds</td><td>Cluster Autoscaler intégré</td><td>Cluster Autoscaler + MachineConfig Operator</td><td>Manuel ou Cluster Autoscaler (à installer)</td><td>Managed Node Groups + Karpenter</td></tr>
+        <tr><td>Infrastructure as Code</td><td>Terraform IBM provider, Schematics</td><td>Terraform IBM provider, Schematics, Ansible</td><td>Terraform/Ansible librement</td><td>Terraform AWS, CDK, CloudFormation</td></tr>
+        <tr><td>Complexité initiale</td><td><span class="yes">Faible</span></td><td>Modérée</td><td><span class="no">Très élevée</span></td><td><span class="yes">Faible</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S5 — VERSIONS K8S ═══════════════════ -->
+<section class="section" id="s5">
+  <h2 class="section-title">5. Gestion des Versions Kubernetes &amp; Mises à Jour</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Politique de support</td><td>N-2 versions K8s</td><td>Cycle OCP (~6 mois)</td><td>Au choix de l'organisation</td><td>N-4 versions K8s</td></tr>
+        <tr><td>Mise à jour plan de contrôle</td><td>Manuelle / automatique (IBM)</td><td>Gérée par IBM via CVO</td><td>Entièrement manuelle</td><td>En 1 clic ou automatique</td></tr>
+        <tr><td>Mise à jour OS nœuds</td><td>Ré-imagerie via ibmcloud ks worker update</td><td>Mise à jour atomique RHCOS (MachineConfigOperator)</td><td>Manuelle (yum/apt, Ansible)</td><td>Via Managed Node Group (drain auto)</td></tr>
+        <tr><td>Correctifs sécurité</td><td>Appliqués par IBM</td><td>Appliqués par IBM</td><td>Responsabilité interne</td><td>Appliqués par AWS</td></tr>
+        <tr><td>Support versions EOL</td><td>Préavis 6 mois</td><td>LTS OCP disponible</td><td>Illimité (risque sécurité)</td><td>Extended Support payant</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S6 — SÉCURITÉ ═══════════════════ -->
+<section class="section" id="s6">
+  <h2 class="section-title">6. Sécurité &amp; Conformité</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Gestion des identités</td><td>IBM IAM → RBAC K8s</td><td>IBM IAM → OAuth OCP → RBAC K8s</td><td>RBAC K8s natif (IdP externe)</td><td>IAM AWS + IRSA</td></tr>
+        <tr><td>Modèle sécurité pods</td><td>Pod Security Admission (PSA)</td><td>Security Context Constraints (SCC) — plus strict</td><td>PSA / PSP (à configurer)</td><td>PSA activé par défaut</td></tr>
+        <tr><td>SELinux</td><td><span class="no">Non appliqué (Ubuntu)</span></td><td><span class="yes">Enforcing (RHCOS)</span></td><td>Selon OS choisi</td><td>Selon OS (Bottlerocket : ✅)</td></tr>
+        <tr><td>Chiffrement secrets</td><td>Key Protect / HPCS (FIPS 140-2 Niv. 4)</td><td>Key Protect / HPCS</td><td>HashiCorp Vault (à déployer)</td><td>AWS KMS natif</td></tr>
+        <tr><td>Scan d'images</td><td>IBM Vulnerability Advisor</td><td>IBM Vulnerability Advisor + Red Hat ACS</td><td>Trivy, Clair, Snyk (à déployer)</td><td>Amazon Inspector + ECR scan</td></tr>
+        <tr><td>Certifications</td><td>ISO 27001, SOC 2, PCI DSS, HIPAA</td><td>FIPS 140-2, FedRAMP, DoD CC SRG</td><td>À construire selon besoins</td><td>SOC 1/2/3, PCI DSS, HIPAA, FedRAMP</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S7 — RÉSEAU ═══════════════════ -->
+<section class="section" id="s7">
+  <h2 class="section-title">7. Réseau &amp; Capacités Ingress</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Plugin CNI</td><td>Calico</td><td>OVN-Kubernetes (ou SDN OCP)</td><td>Au choix : Calico, Cilium, Flannel…</td><td>AWS VPC CNI (IPs VPC natives)</td></tr>
+        <tr><td>Contrôleur Ingress</td><td>ALB IBM basé NGINX (managé)</td><td>Routeur OCP HAProxy (managé)</td><td>À installer : nginx, Traefik, Kong…</td><td>AWS Load Balancer Controller</td></tr>
+        <tr><td>Load Balancer externe</td><td>IBM Cloud Load Balancer (NLB v1/v2)</td><td>IBM Cloud Load Balancer</td><td>MetalLB, HAProxy, F5…</td><td>ALB/NLB AWS natifs</td></tr>
+        <tr><td>Service Mesh</td><td>Istio managé (IBM Cloud Service Mesh)</td><td>OpenShift Service Mesh (Istio/Kiali/Jaeger)</td><td>Au choix : Istio, Linkerd, Consul…</td><td>AWS App Mesh ou Istio</td></tr>
+        <tr><td>Multus (multi-interface)</td><td><span class="no">Non (par défaut)</span></td><td><span class="yes">Oui (supporté)</span></td><td><span class="yes">Oui (si installé)</span></td><td>Limité</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S8 — STOCKAGE ═══════════════════ -->
+<section class="section" id="s8">
+  <h2 class="section-title">8. Options de Stockage</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Stockage bloc</td><td>IBM Cloud Block Storage (10–4000 IOPS)</td><td>IBM Cloud Block Storage</td><td>iSCSI, FC, Ceph RBD, Longhorn…</td><td>Amazon EBS (gp3, io2)</td></tr>
+        <tr><td>Stockage fichier (RWX)</td><td>IBM Cloud File Storage (NFS v4.1)</td><td>IBM Cloud File Storage</td><td>NFS, CephFS, GlusterFS…</td><td>Amazon EFS (multi-AZ)</td></tr>
+        <tr><td>Stockage objet</td><td>IBM COS (S3-compatible) via S3FS CSI</td><td>IBM COS (obligatoire registre interne)</td><td>Rook-Ceph, MinIO, S3 externe</td><td>Amazon S3 via Mountpoint for S3</td></tr>
+        <tr><td>Haute performance</td><td>Portworx Enterprise</td><td>Portworx Enterprise + ODF/OCS</td><td>Rook-Ceph, Pure Storage, NetApp…</td><td>Amazon FSx (Lustre, NetApp ONTAP)</td></tr>
+        <tr><td>StorageClasses préconfig.</td><td><span class="yes">Oui (IBM Cloud)</span></td><td><span class="yes">Oui (IBM Cloud + ODF)</span></td><td><span class="no">Non (à créer)</span></td><td><span class="yes">Oui (AWS CSI managé)</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S9 — COÛTS ═══════════════════ -->
+<section class="section" id="s9">
+  <h2 class="section-title">9. Modèle Tarifaire &amp; Coûts</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Coût plan de contrôle</td><td><span class="yes">Inclus (gratuit)</span></td><td><span class="yes">Inclus (gratuit)</span></td><td>Coût infrastructure dédiée</td><td><strong>0,10 $/h par cluster</strong></td></tr>
+        <tr><td>Coût nœuds workers</td><td>Facturation VM IBM Cloud</td><td>VM IBM + licence OCP (~+25–30 %)</td><td>Infrastructure propre (CAPEX/OPEX)</td><td>Coût instances EC2</td></tr>
+        <tr><td>Licence plateforme</td><td><span class="yes">Aucune</span></td><td>Red Hat OCP incluse (~0,16 $/h/nœud)</td><td><span class="yes">Aucune (open source)</span></td><td><span class="yes">Aucune</span></td></tr>
+        <tr><td>Modèle serverless</td><td><span class="no">Non</span></td><td><span class="no">Non</span></td><td><span class="no">Non</span></td><td><span class="yes">Oui — AWS Fargate</span></td></tr>
+        <tr><td>Coût opérationnel</td><td><span class="yes">Faible</span></td><td><span class="yes">Faible</span></td><td><span class="no">Très élevé (équipes SRE)</span></td><td><span class="yes">Faible</span></td></tr>
+        <tr><td>TCO global</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★☆☆☆</span></td><td><span class="stars">★★★☆☆</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note"><strong>Note BYOL :</strong> Les organisations disposant d'un abonnement Red Hat existant ou de droits IBM Cloud Pak peuvent appliquer leur licence ROKS, supprimant le surcoût OCP et rendant ROKS comparable à IKS en coût.</div>
+</section>
+
+<!-- ═══════════════════ S10 — ÉCOSYSTÈME ═══════════════════ -->
+<section class="section" id="s10">
+  <h2 class="section-title">10. Intégrations &amp; Écosystème</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Catalogue services cloud</td><td>IBM Cloud Catalog (Watson, Db2, MQ…)</td><td>IBM Cloud Catalog + Red Hat Marketplace</td><td>Aucune restriction</td><td>AWS Marketplace (milliers d'apps)</td></tr>
+        <tr><td>IBM Cloud Paks</td><td><span class="no">❌ Non supportés</span></td><td><span class="yes">✅ Entièrement supportés</span></td><td><span class="no">❌ Non</span></td><td><span class="no">❌ Non</span></td></tr>
+        <tr><td>Gestionnaire d'opérateurs</td><td>Manuel (kubectl/Helm)</td><td><span class="yes">OLM + OperatorHub intégrés</span></td><td>Manuel ou via Helm</td><td>Manuel ou via Helm</td></tr>
+        <tr><td>CI/CD intégré</td><td>IBM Cloud CD Toolchains, Tekton externe</td><td><span class="yes">OpenShift Pipelines (Tekton) natif + GitOps</span></td><td>ArgoCD, Flux, Jenkins (à installer)</td><td>AWS CodePipeline, CodeBuild</td></tr>
+        <tr><td>Console développeur</td><td><span class="no">❌ Non</span></td><td><span class="yes">✅ OpenShift Web Console</span></td><td><span class="no">❌ Non</span></td><td><span class="no">❌ Non</span></td></tr>
+        <tr><td>Monitoring intégré</td><td>IBM Cloud Monitoring (Sysdig)</td><td><span class="yes">OCP Prometheus/Grafana intégré</span></td><td>À construire (Prometheus, Grafana)</td><td>Amazon CloudWatch, ADOT</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S11 — SUPPORT ═══════════════════ -->
+<section class="section" id="s11">
+  <h2 class="section-title">11. Support &amp; SLA</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SLA disponibilité</td><td>99,9 % plan de contrôle</td><td>99,9 % plan de contrôle</td><td>Aucun (responsabilité interne)</td><td>99,95 % plan de contrôle</td></tr>
+        <tr><td>Niveaux de support</td><td>Basic, Standard, Premium (IBM)</td><td>Basic, Standard, Premium (IBM + Red Hat)</td><td>Communautaire / distribution commerciale</td><td>Developer, Business, Enterprise</td></tr>
+        <tr><td>Délai réponse P1</td><td>&lt; 1h (Premium)</td><td>&lt; 1h (Premium)</td><td>Selon équipe interne</td><td>&lt; 15 min (Enterprise)</td></tr>
+        <tr><td>Support Red Hat inclus</td><td><span class="no">❌ Non</span></td><td><span class="yes">✅ Oui</span></td><td>Possible (distribution commerciale)</td><td><span class="no">❌ Non</span></td></tr>
+        <tr><td>Support 24/7</td><td>Avec abonnement Premium</td><td>Avec abonnement Premium</td><td>Selon organisation</td><td>Business et supérieur</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S12 — OPÉRATIONS ═══════════════════ -->
+<section class="section" id="s12">
+  <h2 class="section-title">12. Charge Opérationnelle &amp; Complexité</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Gestion plan de contrôle</td><td><span class="yes">✅ IBM (zéro effort)</span></td><td><span class="yes">✅ IBM (zéro effort)</span></td><td><span class="no">❌ Interne (etcd, API server…)</span></td><td><span class="yes">✅ AWS (zéro effort)</span></td></tr>
+        <tr><td>Gestion OS nœuds</td><td>Partielle (IBM gère les patches)</td><td>Partielle (RHCOS via MachineConfigOperator)</td><td>Totale (responsabilité interne)</td><td>Partielle (Managed Node Groups)</td></tr>
+        <tr><td>Backup etcd</td><td><span class="yes">✅ Automatique IBM</span></td><td><span class="yes">✅ Automatique IBM</span></td><td><span class="no">❌ Manuel (responsabilité interne)</span></td><td><span class="yes">✅ Automatique AWS</span></td></tr>
+        <tr><td>Niveau expertise requis</td><td>Intermédiaire (K8s)</td><td>Intermédiaire-avancé (K8s + OCP)</td><td><strong>Expert (K8s, réseau, OS, sécurité)</strong></td><td>Intermédiaire (K8s + AWS)</td></tr>
+        <tr><td>Complexité globale</td><td><span class="stars">★★☆☆☆ Faible</span></td><td><span class="stars">★★★☆☆ Modérée</span></td><td><span class="stars">★★★★★ Très élevée</span></td><td><span class="stars">★★☆☆☆ Faible</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S13 — MATRICE ═══════════════════ -->
+<section class="section" id="s13">
+  <h2 class="section-title">13. Matrice de Comparaison Complète</h2>
+  <div class="table-wrap">
+    <table class="matrix">
+      <thead>
+        <tr><th>Critère</th><th class="h-iks">IKS</th><th class="h-roks">ROKS</th><th class="h-k8s">K8s Auto-Géré</th><th class="h-eks">Amazon EKS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Fournisseur</td><td>IBM Cloud</td><td>IBM Cloud + Red Hat</td><td>Auto-géré</td><td>Amazon Web Services</td></tr>
+        <tr><td>Technologie de base</td><td>Kubernetes vanilla (CNCF)</td><td>OpenShift Container Platform 4.x</td><td>Kubernetes vanilla (CNCF)</td><td>Kubernetes vanilla (CNCF)</td></tr>
+        <tr><td>Plan de contrôle managé</td><td><span class="yes">✅ IBM</span></td><td><span class="yes">✅ IBM</span></td><td><span class="no">❌ Interne</span></td><td><span class="yes">✅ AWS</span></td></tr>
+        <tr><td>OS nœuds workers</td><td>Ubuntu 22.04 / RHEL 8</td><td>RHCOS (immutable)</td><td>Au choix</td><td>Amazon Linux 2023, Bottlerocket, Ubuntu</td></tr>
+        <tr><td>Runtime conteneurs</td><td>containerd</td><td>CRI-O</td><td>Au choix</td><td>containerd</td></tr>
+        <tr><td>SELinux enforcing</td><td><span class="no">❌</span></td><td><span class="yes">✅</span></td><td>Selon OS</td><td>Selon OS</td></tr>
+        <tr><td>Registre intégré</td><td><span class="no">❌ (ICR externe)</span></td><td><span class="yes">✅ (registre interne OCP)</span></td><td><span class="no">❌ (à déployer)</span></td><td><span class="no">❌ (ECR externe)</span></td></tr>
+        <tr><td>IBM Cloud Paks</td><td><span class="no">❌</span></td><td><span class="yes">✅</span></td><td><span class="no">❌</span></td><td><span class="no">❌</span></td></tr>
+        <tr><td>OperatorHub / OLM</td><td><span class="no">❌ (manuel)</span></td><td><span class="yes">✅ (intégré)</span></td><td><span class="no">❌ (manuel)</span></td><td><span class="no">❌ (manuel)</span></td></tr>
+        <tr><td>CI/CD intégré</td><td><span class="no">❌</span></td><td><span class="yes">✅ (Tekton + GitOps)</span></td><td><span class="no">❌</span></td><td>Partiel (CodePipeline)</td></tr>
+        <tr><td>Facilité déploiement</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★☆☆☆</span></td><td><span class="stars">★★★★☆</span></td></tr>
+        <tr><td>Sécurité managée</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★★★</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★★★☆</span></td></tr>
+        <tr><td>Écosystème intégrations</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★★★</span></td><td><span class="stars">★★★★★</span></td><td><span class="stars">★★★★★</span></td></tr>
+        <tr><td>Maîtrise des coûts</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★★☆☆</span></td></tr>
+        <tr><td>SLA</td><td>99,9 % IBM</td><td>99,9 % IBM + RH</td><td>Interne</td><td>99,95 % AWS</td></tr>
+        <tr><td>Complexité opérationnelle</td><td><span class="yes">Faible</span></td><td>Modérée</td><td><span class="no">Très élevée</span></td><td><span class="yes">Faible</span></td></tr>
+        <tr><td>Certifications conformité</td><td>ISO/SOC/PCI/HIPAA</td><td>FIPS/FedRAMP/DoD</td><td>À construire</td><td>SOC/PCI/HIPAA/FedRAMP</td></tr>
+        <tr><td>Vendor lock-in</td><td>IBM Cloud</td><td>IBM Cloud + Red Hat</td><td><span class="yes">Minimal</span></td><td>AWS</td></tr>
+        <tr><td>Portabilité multi-cloud</td><td><span class="stars">★★★★☆</span></td><td><span class="stars">★★★☆☆</span></td><td><span class="stars">★★★★★</span></td><td><span class="stars">★★★☆☆</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════ S14 — RECOMMANDATIONS ═══════════════════ -->
+<section class="section" id="s14">
+  <h2 class="section-title">14. Recommandations par Profil</h2>
+  <div class="rec-grid">
+    <div class="rec-box rec-iks">
+      <div class="rec-header">Profil 1 — Entreprise native IBM Cloud</div>
+      <div class="rec-body">
+        <p class="solution">→ IKS ou ROKS</p>
+        <ul>
+          <li>IKS si workloads conteneurisés purs, coût minimal, équipes K8s expertes</li>
+          <li>ROKS si IBM Cloud Paks, secteur réglementé (FIPS, FedRAMP), OpenShift hybride</li>
+          <li>ROKS si expérience développeur enrichie souhaitée</li>
+          <li>BYOL Red Hat : ROKS au coût d'IKS</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rec-box rec-roks">
+      <div class="rec-header">Profil 2 — Organisation hybride / Multi-Cloud</div>
+      <div class="rec-body">
+        <p class="solution">→ ROKS (via IBM Cloud Satellite)</p>
+        <ul>
+          <li>Cohérence opérationnelle IBM Cloud ↔ on-premises ↔ autres clouds</li>
+          <li>Même CLI oc, SCC, OperatorHub dans tous les environnements</li>
+          <li>IBM ACM pour gouvernance centralisée multi-clusters</li>
+          <li>IBM Cloud Paks sur Satellite</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rec-box rec-eks">
+      <div class="rec-header">Profil 3 — Organisation native AWS</div>
+      <div class="rec-body">
+        <p class="solution">→ Amazon EKS</p>
+        <ul>
+          <li>Déjà investi dans l'écosystème AWS (IAM, VPC, RDS, S3, Lambda)</li>
+          <li>Intégration native tous services AWS + AWS Marketplace</li>
+          <li>Fargate pour workloads serverless sans gestion nœuds</li>
+          <li>Karpenter pour optimisation coûts EC2</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rec-box rec-k8s">
+      <div class="rec-header">Profil 4 — Souveraineté / On-Premises obligatoire</div>
+      <div class="rec-body">
+        <p class="solution">→ Kubernetes Auto-Géré</p>
+        <ul>
+          <li>Exigences réglementaires interdisant le cloud public</li>
+          <li>Infrastructure propre à valoriser (CAPEX déjà engagé)</li>
+          <li>Distribution commerciale recommandée (Rancher, Tanzu)</li>
+          <li>⚠️ TCO réel souvent sous-estimé — expertise SRE indispensable</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <br>
+  <h3 style="font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:.75rem;">Tableau de Décision Rapide</h3>
+  <div class="table-wrap">
+    <table class="decision">
+      <thead><tr><th>Besoin principal</th><th>Solution recommandée</th></tr></thead>
+      <tbody>
+        <tr><td>Coût minimal sur IBM Cloud</td><td>IKS</td></tr>
+        <tr><td>IBM Cloud Paks</td><td>ROKS</td></tr>
+        <tr><td>OpenShift hybride (on-prem + cloud)</td><td>ROKS sur Satellite</td></tr>
+        <tr><td>Conformité FIPS / FedRAMP</td><td>ROKS</td></tr>
+        <tr><td>Écosystème AWS natif</td><td>Amazon EKS</td></tr>
+        <tr><td>Fargate / Kubernetes serverless</td><td>Amazon EKS</td></tr>
+        <tr><td>Souveraineté des données / air-gapped</td><td>K8s Auto-Géré</td></tr>
+        <tr><td>Contrôle total sur la configuration K8s</td><td>K8s Auto-Géré</td></tr>
+        <tr><td>Portabilité maximale multi-cloud</td><td>K8s Auto-Géré ou IKS</td></tr>
+        <tr><td>Expérience développeur intégrée</td><td>ROKS</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Comparaison des Solutions Kubernetes — IKS · ROKS · Kubernetes Auto-Géré · Amazon EKS · Septembre 2026<br>
+  Basé sur les analyses existantes du workspace IKS-OCP
+</footer>
+
+</body>
+</html>
